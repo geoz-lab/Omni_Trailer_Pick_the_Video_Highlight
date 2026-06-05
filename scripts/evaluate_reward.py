@@ -18,7 +18,10 @@ sys.path.insert(0, str(REPO))
 
 from src.reward.reward_model import RewardConfig, RewardModel  # noqa: E402
 from src.reward.reward_prompts import AXES                     # noqa: E402
+from src.utils.env import load_env_file                        # noqa: E402
 from src.utils.video_utils import probe_duration              # noqa: E402
+
+load_env_file()   # pick up GEMINI_API_KEY / OPENAI_API_KEY from .env if present
 
 
 def parse_args() -> argparse.Namespace:

@@ -146,12 +146,16 @@ conda activate omni_trailer
 # pip install flash-attn --no-build-isolation
 ```
 
-The reward judge calls an external VLM API — export your key first:
+The reward judge calls an external VLM API. Put your key in a `.env` file
+(gitignored; auto-loaded by the scripts) — or just `export` it:
 
 ```bash
-export GEMINI_API_KEY=...    # default judge: Gemini 2.5 Flash (native video+audio)
-# or set provider: openai + OPENAI_API_KEY in configs/reward.yaml
+cp .env.example .env        # then edit .env and set GEMINI_API_KEY=...
+# equivalently: export GEMINI_API_KEY=...
 ```
+
+Default judge is Gemini 2.5 Flash (native video+audio). To use OpenAI instead,
+set `judge.provider: openai` in `configs/reward.yaml` and provide `OPENAI_API_KEY`.
 
 ## Quick start
 

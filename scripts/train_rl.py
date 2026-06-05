@@ -24,7 +24,10 @@ from src.omni_model.trailer_selector import TrailerSelector, _SELECTOR_PROMPT  #
 from src.reward.reward_model import RewardConfig, RewardModel              # noqa: E402
 from src.rl.grpo_trainer import GRPOConfig, GRPOTrainer                    # noqa: E402
 from src.rl.rollout import rollout_group                                   # noqa: E402
+from src.utils.env import load_env_file                                    # noqa: E402
 from src.utils.logging_utils import MetricLogger                          # noqa: E402
+
+load_env_file()   # pick up GEMINI_API_KEY / WANDB_API_KEY from .env if present
 
 
 def read_manifest(path: str):
