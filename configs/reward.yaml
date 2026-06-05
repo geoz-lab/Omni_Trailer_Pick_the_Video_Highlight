@@ -1,0 +1,31 @@
+# Reward model configuration
+# Judge = external API VLM (highest-quality signal). Keep it strictly larger than
+# and frozen relative to the policy so the policy cannot trivially reward-hack.
+judge:
+  provider: gemini                # gemini | openai
+  model: gemini-2.5-pro           # alt: gpt-4o
+  api_key_env: GEMINI_API_KEY     # read from environment, never commit keys
+  max_video_seconds: 60
+  frame_rate: 1                   # frames sampled when sending clip to the judge
+  temperature: 0.0
+  max_retries: 4
+  request_timeout_s: 120
+
+# Per-axis scores returned by the judge (each in [0, 1]); reward = weighted sum.
+axes:
+  excitement:          0.20
+  emotional_impact:    0.20
+  story_completeness:  0.15
+  relevance_to_video:  0.20
+  audiovisual_alignment: 0.10
+  trailer_quality:     0.15
+
+# Caching avoids paying for the same clip twice during RL rollouts.
+cache:
+  enabled: true
+  dir: data/processed/reward_cache
+
+# Reward shaping
+shaping:
+  length_penalty: 0.05            # penalize clips far from target_clip_seconds
+  duplicate_penalty: 0.10         # discourage near-duplicate candidates in a group

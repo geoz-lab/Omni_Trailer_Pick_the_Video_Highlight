@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Data & artifacts (keep dir structure via .gitkeep)
+data/raw_videos/*
+data/processed/*
+data/metadata/*
+!**/.gitkeep
+checkpoints/
+examples/demo_output/*
+!examples/demo_output/.gitkeep
+
+# Large media (commit small demo assets explicitly if needed)
+*.mp4
+*.mov
+*.wav
+*.mp3
+
+# Secrets / keys
+.env
+*.key
+
+# Logs / experiment tracking
+wandb/
+*.log
+
+# macOS
+.DS_Store

@@ -1,0 +1,43 @@
+# Omni Trailer model configuration
+# Architecture: UNIFIED OMNI backbone (thinker = fusion). Lightweight encoders
+# are used only for fast candidate-segment proposal before the omni model reasons.
+seed: 42
+device: cuda
+
+# --- Unified omni thinker (does fusion + reasoning + selection natively) ---
+thinker:
+  backbone: Qwen/Qwen2.5-Omni-7B
+  modalities: [video, audio, text]      # ingested natively, no custom fusion
+  max_video_seconds: 600
+  frame_rate: 2                         # frames/sec fed to the omni model
+  audio_sample_rate: 16000
+  tasks: [event_detection, scene_understanding, emotion_analysis, story_modeling, cross_modal_reasoning]
+  dtype: bfloat16
+  attn_implementation: flash_attention_2
+
+# --- Selector policy: emits highlight start/end as TEXT TOKENS (GRPO-friendly) ---
+selector:
+  output_format: tokens                 # e.g. "<start>02:14</start><end>02:59</end>"
+  min_clip_seconds: 5
+  max_clip_seconds: 60
+  target_clip_seconds: 45
+  num_candidates_per_video: 4           # group size for GRPO rollouts
+
+# --- Lightweight proposal encoders (NOT the fusion; just narrow the search) ---
+proposal_encoders:
+  visual:
+    backbone: OpenGVLab/InternVideo2-Stage2_1B   # motion-aware, good for sports
+    clip_seconds: 4                     # temporal window per proposal token
+    embed_dim: 768
+  audio:
+    asr_backbone: openai/whisper-large-v3         # ASR transcript + speech features
+    event_backbone: laion/clap-htsat-fused        # non-speech events: crowd roar, music
+    sample_rate: 16000
+    embed_dim: 512
+  text:
+    # Captions/ASR are consumed natively by the omni thinker; this encoder is only
+    # for retrieval-style proposal scoring. Set `enabled: false` to skip.
+    enabled: true
+    backbone: BAAI/bge-m3
+    max_tokens: 256
+    embed_dim: 1024

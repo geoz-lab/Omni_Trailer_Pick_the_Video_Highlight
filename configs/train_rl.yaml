@@ -1,0 +1,46 @@
+# Reinforcement learning configuration
+# Algorithm: GRPO (no value network; group-relative advantages from a scalar reward).
+algorithm: grpo
+
+model_config: configs/model.yaml
+reward_config: configs/reward.yaml
+
+data:
+  train_manifest: data/metadata/train.jsonl
+  val_manifest: data/metadata/val.jsonl
+  shuffle: true
+
+grpo:
+  group_size: 4                 # candidate clips sampled per video (must match selector.num_candidates_per_video)
+  kl_coeff: 0.04                # KL penalty toward the frozen reference policy
+  clip_ratio: 0.2
+  normalize_advantages: true    # group-relative (subtract group mean / std)
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    max_new_tokens: 64          # enough for the <start>/<end> timestamp tokens
+
+optim:
+  lr: 1.0e-6
+  weight_decay: 0.0
+  warmup_steps: 50
+  max_steps: 5000
+  grad_accum_steps: 8
+  max_grad_norm: 1.0
+
+peft:
+  use_lora: true                # train a LoRA adapter on the omni thinker, keep base frozen
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+eval:
+  every_steps: 250
+  num_videos: 50
+
+logging:
+  project: omni-trailer
+  backend: wandb                # wandb | none
+  save_dir: checkpoints/
+  save_every_steps: 500
