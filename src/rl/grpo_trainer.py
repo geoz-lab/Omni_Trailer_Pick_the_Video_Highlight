@@ -2,8 +2,9 @@
 
 GRPO needs no value network: for each video it samples a *group* of candidate
 highlights, then sets each candidate's advantage to its reward minus the group
-mean (optionally divided by the group std). The policy is nudged toward
-above-average candidates, with a KL leash to a frozen reference policy.
+mean (optionally / std). The policy is nudged toward above-average candidates via
+a PPO-style clipped surrogate, with a KL leash to a frozen reference policy.
+Only a LoRA adapter on the omni thinker is trained.
 """
 from __future__ import annotations
 
@@ -30,8 +31,7 @@ def group_advantages(rewards: list[float], normalize: bool) -> list[float]:
     mean = sum(rewards) / n
     advs = [r - mean for r in rewards]
     if normalize and n > 1:
-        var = sum(a * a for a in advs) / n
-        std = var ** 0.5
+        std = (sum(a * a for a in advs) / n) ** 0.5
         if std > 1e-8:
             advs = [a / std for a in advs]
     return advs
@@ -40,24 +40,70 @@ def group_advantages(rewards: list[float], normalize: bool) -> list[float]:
 class GRPOTrainer:
     """Optimizes the omni policy (LoRA) from groups of scored candidates."""
 
-    def __init__(self, policy, reference, optimizer, config: GRPOConfig | None = None) -> None:
+    def __init__(self, policy, reference, optimizer, config: GRPOConfig | None = None,
+                 logger=None) -> None:
         self.policy = policy            # OmniThinker (trainable LoRA)
-        self.reference = reference      # frozen copy for the KL term
+        self.reference = reference      # frozen OmniThinker for the KL term
         self.optimizer = optimizer
         self.config = config or GRPOConfig()
+        self.logger = logger
 
     def step(self, inputs: dict, group: list[Candidate]) -> dict:
-        """Single optimization step over one GRPO group. Returns metrics."""
-        advs = group_advantages([c.reward for c in group], self.config.normalize_advantages)
+        """Accumulate the GRPO loss for one group (calls backward). Returns metrics."""
+        import torch
 
-        # TODO: for each candidate, recompute current-policy logprobs of its
-        #       token_ids, form ratio = exp(logp_new - logp_old), apply the
-        #       clipped surrogate with `adv`, add kl_coeff * KL(policy||reference),
-        #       backprop with grad accumulation + clipping.
-        _ = advs  # placeholder until the loss is wired
-        raise NotImplementedError("Wire the clipped GRPO surrogate + KL here.")
+        cfg = self.config
+        advs = group_advantages([c.reward for c in group], cfg.normalize_advantages)
 
-    def train(self, dataloader, rollout_fn) -> None:
-        """Main loop: rollout a group per video, then `step` on it."""
-        # for step, sample in enumerate(dataloader): group = rollout_fn(sample); self.step(...)
-        raise NotImplementedError
+        total_loss = 0.0
+        total_kl = 0.0
+        for cand, adv in zip(group, advs):
+            if not cand.token_ids:
+                continue
+            new_logp = self.policy.logprobs_of(inputs, cand.token_ids)          # [T], grad
+            with torch.no_grad():
+                ref_logp = self.reference.logprobs_of(inputs, cand.token_ids)   # [T]
+            old_logp = torch.as_tensor(cand.logprobs, dtype=new_logp.dtype, device=new_logp.device)
+
+            ratio = torch.exp(new_logp - old_logp)
+            unclipped = ratio * adv
+            clipped = torch.clamp(ratio, 1 - cfg.clip_ratio, 1 + cfg.clip_ratio) * adv
+            pg_loss = -torch.min(unclipped, clipped)
+            # k3 unbiased KL estimator (Schulman): exp(d) - d - 1, d = ref - new
+            d = ref_logp - new_logp
+            kl = torch.exp(d) - d - 1
+            loss = (pg_loss + cfg.kl_coeff * kl).mean()
+            (loss / cfg.group_size).backward()
+            total_loss += loss.item()
+            total_kl += kl.mean().item()
+
+        g = len(group)
+        return {
+            "loss": total_loss / g,
+            "kl": total_kl / g,
+            "reward_mean": sum(c.reward for c in group) / g,
+            "reward_max": max(c.reward for c in group),
+            "malformed_frac": sum(c.span is None for c in group) / g,
+        }
+
+    def train(self, samples, rollout_fn) -> None:
+        """Main loop. ``rollout_fn(sample) -> (inputs, group)`` produces a GRPO group."""
+        import torch
+
+        self.optimizer.zero_grad()
+        for step, sample in enumerate(samples):
+            if step >= self.config.max_steps:
+                break
+            inputs, group = rollout_fn(sample)
+            metrics = self.step(inputs, group)
+
+            if (step + 1) % self.config.grad_accum_steps == 0:
+                torch.nn.utils.clip_grad_norm_(
+                    (p for p in self.policy.model.parameters() if p.requires_grad),
+                    self.config.max_grad_norm,
+                )
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+            if self.logger is not None:
+                self.logger.log_metrics(metrics, step=step)

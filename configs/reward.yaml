@@ -3,10 +3,11 @@
 # and frozen relative to the policy so the policy cannot trivially reward-hack.
 judge:
   provider: gemini                # gemini | openai
-  model: gemini-2.5-pro           # alt: gpt-4o
-  api_key_env: GEMINI_API_KEY     # read from environment, never commit keys
+  model: gemini-2.5-flash         # RL-loop default (native video+audio, cheap)
+  eval_model: gemini-2.5-pro      # higher-quality model for final evaluate_reward.py
+  api_key_env: GEMINI_API_KEY     # openai -> OPENAI_API_KEY; never commit keys
   max_video_seconds: 60
-  frame_rate: 1                   # frames sampled when sending clip to the judge
+  frame_rate: 1                   # frames sampled when the judge can't take native video
   temperature: 0.0
   max_retries: 4
   request_timeout_s: 120

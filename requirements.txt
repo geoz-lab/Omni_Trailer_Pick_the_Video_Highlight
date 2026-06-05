@@ -1,3 +1,6 @@
+# pip fallback for the cluster env (prefer environment.yml). Install torch first,
+# matched to your CUDA, then the rest. flash-attn is built against torch/CUDA.
+
 # Core
 numpy>=1.24
 pyyaml>=6.0
@@ -7,21 +10,28 @@ tqdm>=4.66
 torch>=2.1
 torchvision>=0.16
 torchaudio>=2.1
-transformers>=4.40
+transformers>=4.52
+accelerate>=0.30
+peft>=0.11
+einops>=0.7
+# flash-attn>=2.5            # install last: pip install flash-attn --no-build-isolation
 
-# Multimodal encoders
-open-clip-torch>=2.24      # visual encoder backbones
-openai-whisper>=20231117   # ASR + audio encoder
-
-# Video / audio I/O
-moviepy>=1.0.3
-ffmpeg-python>=0.2.0
-opencv-python>=4.9
+# Omni backbone + encoders
+qwen-omni-utils
+openai-whisper>=20231117
+open-clip-torch>=2.24
 librosa>=0.10
 
-# RL / training utilities
-accelerate>=0.30
-einops>=0.7
+# Reward judge APIs
+google-genai>=0.3
+openai>=1.30
+pillow>=10.0
+
+# Video / audio I/O + GIF
+moviepy>=1.0.3
+imageio>=2.34
+imageio-ffmpeg>=0.4.9
+opencv-python-headless>=4.9
 
 # Logging / experiment tracking
 wandb>=0.16

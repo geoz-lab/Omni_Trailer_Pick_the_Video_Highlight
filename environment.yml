@@ -1,0 +1,47 @@
+# Cluster (A100/H100) environment for Omni Trailer.
+#   conda env create -f environment.yml
+#   conda activate omni_trailer
+# Notes:
+#   - Pin CUDA to match your driver; this assumes CUDA 12.1 wheels.
+#   - flash-attn must be built against the installed torch/CUDA; install it last.
+name: omni_trailer
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pytorch>=2.1
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - ffmpeg
+  - pip:
+      # omni backbone + training
+      - transformers>=4.52
+      - accelerate>=0.30
+      - peft>=0.11
+      - qwen-omni-utils
+      - einops>=0.7
+      # encoders (proposal stage)
+      - openai-whisper
+      - open_clip_torch
+      - librosa>=0.10
+      # reward judge APIs
+      - google-genai>=0.3
+      - openai>=1.30
+      - pillow
+      # video / audio I/O + GIF
+      - imageio
+      - imageio-ffmpeg
+      - moviepy
+      - opencv-python-headless
+      # utils
+      - pyyaml>=6.0
+      - numpy>=1.24
+      - tqdm>=4.66
+      - wandb>=0.16
+      - rich>=13.7
+      # install AFTER torch is present (matched to your CUDA):
+      # - flash-attn>=2.5 --no-build-isolation

@@ -65,15 +65,23 @@ class TrailerSelector:
             return None
         return HighlightSpan(start_s, end_s)
 
-    def select(self, sample: FusionInputs) -> HighlightSpan | None:
-        """Greedy single-best selection (inference path)."""
-        completion = self.thinker.reason(sample, _SELECTOR_PROMPT)
-        return self.parse(completion)
+    def select(self, sample: FusionInputs, total_duration: float | None = None) -> HighlightSpan | None:
+        """Greedy single-best selection (inference path).
 
-    def propose_candidates(self, inputs: dict, group_size: int) -> list[dict]:
+        If ``total_duration`` is given, the span is clamped into ``[0, duration]``.
+        """
+        completion = self.thinker.reason(sample, _SELECTOR_PROMPT)
+        span = self.parse(completion)
+        if span is not None and total_duration is not None:
+            start = max(0.0, min(span.start_s, total_duration))
+            end = max(start, min(span.end_s, total_duration))
+            span = HighlightSpan(start, end)
+        return span
+
+    def propose_candidates(self, inputs: dict, group_size: int, **gen_kwargs) -> list[dict]:
         """Sample `group_size` candidate completions for a GRPO rollout group.
 
         Returns raw rollout dicts {text, token_ids, logprobs}; parsing into spans
         and rewarding happens in `rl.rollout`.
         """
-        return [self.thinker.generate(inputs) for _ in range(group_size)]
+        return [self.thinker.generate(inputs, **gen_kwargs) for _ in range(group_size)]

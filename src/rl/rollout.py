@@ -37,9 +37,10 @@ def rollout_group(
     group_size: int,
     workdir: str,
     malformed_penalty: float = -1.0,
+    gen_kwargs: dict | None = None,
 ) -> list[Candidate]:
     """Produce one GRPO group of scored candidates for a single video."""
-    raw = selector.propose_candidates(inputs, group_size)
+    raw = selector.propose_candidates(inputs, group_size, **(gen_kwargs or {}))
     candidates: list[Candidate] = []
     for i, roll in enumerate(raw):
         span = selector.parse(roll["text"])

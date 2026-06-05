@@ -19,6 +19,24 @@ with the full video context.
 
 ---
 
+## Demo
+
+The model watches a full clip and cuts the single most trailer-worthy moment.
+
+| Input video (full clip) | Picked highlight (trailer) |
+| :---: | :---: |
+| ![input](demo_video/Ronaldo_goal_demo.gif) | ![trailer](output/Ronaldo_goal_highlight.gif) |
+
+> The input GIF is the bundled `demo_video/Ronaldo_goal_demo.mp4`. The trailer GIF
+> on the right is produced when you run inference on a GPU
+> (`output/Ronaldo_goal_highlight.gif`) — it appears here after your first run.
+
+```bash
+python scripts/run_inference.py            # uses the Ronaldo demo by default
+```
+
+---
+
 ## Goal
 
 Automatically pick the most touching, exciting, or representative highlight
@@ -116,27 +134,39 @@ Omni_Trailer_Pick_the_Video_Highlight/
 
 ## Installation
 
+Inference and RL training run the Qwen2.5-Omni backbone and need a GPU
+(A100/H100 recommended).
+
 ```bash
 git clone https://github.com/geoz-lab/Omni_Trailer_Pick_the_Video_Highlight.git
 cd Omni_Trailer_Pick_the_Video_Highlight
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+conda env create -f environment.yml      # or: pip install -r requirements.txt
+conda activate omni_trailer
+# install flash-attn last, matched to your torch/CUDA:
+# pip install flash-attn --no-build-isolation
+```
+
+The reward judge calls an external VLM API — export your key first:
+
+```bash
+export GEMINI_API_KEY=...    # default judge: Gemini 2.5 Flash (native video+audio)
+# or set provider: openai + OPENAI_API_KEY in configs/reward.yaml
 ```
 
 ## Quick start
 
 ```bash
-# 1. Preprocess raw videos into frames / audio / ASR features
-python scripts/preprocess_videos.py --input data/raw_videos --output data/processed
+# Pick the highlight from the bundled demo and export clip + GIF
+python scripts/run_inference.py            # -> output/Ronaldo_goal_highlight.mp4 + .gif
 
-# 2. Train the trailer selector with RL
+# ...or any video
+python scripts/run_inference.py --video path/to.mp4 --output output
+
+# Train the trailer selector with GRPO (needs a manifest of videos)
 python scripts/train_rl.py --config configs/train_rl.yaml
 
-# 3. Run inference: pick the highlight from a new video
-python scripts/run_inference.py --video examples/demo_video.mp4 --output examples/demo_output
-
-# 4. Evaluate the reward model on candidate clips
-python scripts/evaluate_reward.py --clips examples/demo_output
+# Score a folder of candidate clips with the judge
+python scripts/evaluate_reward.py --clips output
 ```
 
 ## Configuration
@@ -155,8 +185,13 @@ python scripts/evaluate_reward.py --clips examples/demo_output
 
 ## Status
 
-🚧 Early scaffold. Module interfaces are defined with documented stubs and
-`TODO` markers; implementations are in progress.
+The omni inference path (`run_inference.py`), the GRPO training loop
+(`train_rl.py`), the Gemini/OpenAI reward judge, and all video/audio I/O are
+implemented and meant to run on the GPU cluster. They have **not** been executed
+on CPU here. Pin exact `transformers` / SDK versions and the Qwen2.5-Omni model
+id for your environment before a full run. The proposal-stage encoders
+(`src/encoders/`) remain optional stubs (the omni model ingests the full clip
+directly).
 
 ## License
 
