@@ -186,6 +186,10 @@ python scripts/evaluate_reward.py --clips output
 - [`docs/idea.md`](docs/idea.md) — motivation and problem framing
 - [`docs/architecture.md`](docs/architecture.md) — model and data flow
 - [`docs/training.md`](docs/training.md) — RL training recipe
+- [`docs/sherlock.md`](docs/sherlock.md) — running on Stanford's Sherlock cluster (Slurm)
+
+Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch),
+[`slurm/train.sbatch`](slurm/train.sbatch).
 
 ## Status
 

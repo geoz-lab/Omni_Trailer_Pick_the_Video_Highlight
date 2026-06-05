@@ -1,0 +1,127 @@
+# Running on Sherlock (Stanford HPC)
+
+Sherlock is a Slurm cluster with a few quirks that matter here:
+
+- **Login nodes have no GPU; compute nodes have no direct internet.** You
+  download weights/data on a login node and compute on a GPU node.
+- **`$HOME` is ~15 GB.** Qwen2.5-Omni-7B is ~20 GB — keep the repo, conda env,
+  HF cache and checkpoints on **`$SCRATCH`** (or `$GROUP_SCRATCH`/`$OAK`).
+- Exact GPU constraint strings and the HTTP proxy host change over time — verify
+  against the current [Sherlock docs](https://www.sherlock.stanford.edu/docs/).
+
+---
+
+## 0. Gotcha: the demo video is not in the repo
+
+`demo_video/Ronaldo_goal_demo.mp4` is gitignored (only the GIF is committed), so
+`git pull` won't bring it. Copy it over, or use your own clip:
+
+```bash
+scp demo_video/Ronaldo_goal_demo.mp4 \
+  <sunet>@login.sherlock.stanford.edu:$SCRATCH/Omni_Trailer_Pick_the_Video_Highlight/demo_video/
+```
+
+## 1. One-time setup (login node — has internet)
+
+```bash
+cd $SCRATCH
+git clone https://github.com/geoz-lab/Omni_Trailer_Pick_the_Video_Highlight.git
+cd Omni_Trailer_Pick_the_Video_Highlight
+
+conda env create -f environment.yml      # put envs on $SCRATCH, not $HOME
+conda activate omni_trailer
+
+module load cuda/12.1.1                   # match your torch CUDA
+pip install flash-attn --no-build-isolation   # build last, against loaded CUDA + torch
+```
+
+**Pre-download the model** (compute nodes can't reach HuggingFace):
+
+```bash
+export HF_HOME=$SCRATCH/hf
+huggingface-cli download Qwen/Qwen2.5-Omni-7B
+```
+
+**API key** for the reward judge:
+
+```bash
+cp .env.example .env       # edit .env -> GEMINI_API_KEY=...
+```
+
+`.env` is gitignored and auto-loaded by the scripts. Keep it on `$SCRATCH` so
+batch jobs pick it up without pasting the key into sbatch files.
+
+## 2. Quick interactive test
+
+```bash
+sh_dev -p gpu -G 1 -C GPU_MEM:80GB -t 1:00:00   # verify constraint with `sinfo`/`sh_part`
+module load cuda/12.1.1
+conda activate omni_trailer
+export HF_HOME=$SCRATCH/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+python scripts/run_inference.py        # -> output/Ronaldo_goal_highlight.mp4 + .gif
+```
+
+## 3. Batch inference
+
+```bash
+mkdir -p logs
+sbatch slurm/inference.sbatch                       # demo video
+sbatch slurm/inference.sbatch $SCRATCH/my_clip.mp4  # your own video
+```
+
+## 4. Training (GRPO)
+
+Prepare a manifest first — `data/metadata/train.jsonl`, one JSON per line:
+
+```json
+{"video": "data/raw_videos/match1.mp4", "summary": "Champions League final, last-minute winner"}
+```
+
+Then:
+
+```bash
+mkdir -p logs
+sbatch slurm/train.sbatch
+```
+
+### The reward API needs outbound internet
+
+Every GRPO step calls Gemini to score clips. If the GPU node has no egress,
+training stalls on the first reward call. Options:
+
+1. **Set the Sherlock HTTP(S) proxy** in `slurm/train.sbatch` (uncomment the
+   `https_proxy`/`http_proxy` lines; get the host from Sherlock docs).
+2. The per-clip **reward cache** (`data/processed/reward_cache`) dedupes repeat
+   clips, but a fresh run still needs live access.
+3. Or **host the judge on-cluster** (a local VLM) and edit `configs/reward.yaml`.
+
+W&B logging also needs internet — start with `logging.backend: none` in
+`configs/train_rl.yaml`, switch to `wandb` once egress works.
+
+### Memory
+
+`train_rl.py` loads a **second full 7B model as the frozen reference**
+(policy + reference ≈ 32 GB before activations) → an 80 GB GPU is recommended.
+To fit a 40 GB GPU, drop the second copy and use PEFT's adapter-disable for the
+reference instead (ask if you want this wired in).
+
+## 5. Common pitfalls
+
+| Symptom | Cause / fix |
+| --- | --- |
+| `OSError ... can't reach huggingface.co` | Pre-download on login node; set `HF_HUB_OFFLINE=1` |
+| Reward call hangs / times out | Compute node has no internet → set the proxy (§4) |
+| `CUDA out of memory` in training | Use 80 GB GPU, or adapter-disable reference (§4) |
+| `flash-attn` import error | Rebuild against the loaded CUDA + your torch |
+| `$HOME` quota exceeded | Move repo/env/`HF_HOME`/checkpoints to `$SCRATCH` |
+| Job killed at time limit | `gpu` partition caps ~2 days; checkpoint + resume |
+
+## 6. Fill in the README trailer GIF
+
+After a successful run, `output/Ronaldo_goal_highlight.gif` exists on Sherlock.
+Copy it back and commit so the README's right-hand demo cell renders:
+
+```bash
+scp <sunet>@login.sherlock.stanford.edu:$SCRATCH/.../output/Ronaldo_goal_highlight.gif output/
+git add -f output/Ronaldo_goal_highlight.gif && git commit -m "Add trailer GIF" && git push
+```
