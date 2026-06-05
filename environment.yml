@@ -17,6 +17,9 @@ dependencies:
   - torchaudio
   - pytorch-cuda=12.1
   - ffmpeg
+  # wandb from conda-forge ships prebuilt (pip would build wandb-core from source
+  # and need the Go compiler). Optional: only used when logging.backend == wandb.
+  - wandb>=0.16
   - pip:
       # omni backbone + training
       - transformers>=4.52
@@ -41,7 +44,6 @@ dependencies:
       - pyyaml>=6.0
       - numpy>=1.24
       - tqdm>=4.66
-      - wandb>=0.16
       - rich>=13.7
       # install AFTER torch is present (matched to your CUDA):
       # - flash-attn>=2.5 --no-build-isolation

@@ -113,6 +113,7 @@ reference instead (ask if you want this wired in).
 | Reward call hangs / times out | Compute node has no internet → set the proxy (§4) |
 | `CUDA out of memory` in training | Use 80 GB GPU, or adapter-disable reference (§4) |
 | `flash-attn` import error | Rebuild against the loaded CUDA + your torch |
+| `wandb` build fails: "Did not find the 'go' binary" | Install from conda-forge: `conda install -n omni_trailer -c conda-forge wandb` (pip builds wandb-core from source). It's optional anyway. |
 | `$HOME` quota exceeded | Move repo/env/`HF_HOME`/checkpoints to `$SCRATCH` |
 | Job killed at time limit | `gpu` partition caps ~2 days; checkpoint + resume |
 

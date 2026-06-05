@@ -34,5 +34,8 @@ imageio-ffmpeg>=0.4.9
 opencv-python-headless>=4.9
 
 # Logging / experiment tracking
-wandb>=0.16
 rich>=13.7
+# wandb is OPTIONAL (only used when configs/train_rl.yaml logging.backend == wandb).
+# Recent wandb builds wandb-core from source via pip and needs the Go compiler;
+# prefer conda-forge:  conda install -c conda-forge wandb
+# or force a prebuilt wheel: pip install --only-binary=:all: wandb
