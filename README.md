@@ -32,6 +32,22 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 # -> output/Ronaldo_goal_demo_highlight.mp4 + .gif
 ```
 
+### Reward-model scores (Gemini 2.5 Pro judge)
+
+How the judge rates each clip on the six axes (0–1) and the weighted **reward**.
+A good trailer should beat the full video; the GRPO-trained policy should beat the
+untrained one.
+
+| Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Original full video (33 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Picked highlight — pre-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
+> Scored with the Gemini 2.5 Pro judge via
+> `python scripts/evaluate_reward.py --eval-model`. The **post-GRPO** row is filled
+> after RL training, to show the lift from GRPO.
+
 ---
 
 ## Goal

@@ -125,8 +125,12 @@ class RewardModel:
     def _cache_path(self, clip_path: str) -> Path | None:
         if not self.config.cache_dir:
             return None
-        digest = hashlib.sha1(Path(clip_path).read_bytes()).hexdigest()
-        return Path(self.config.cache_dir) / f"{digest}.json"
+        # key on judge (provider+model) AND clip bytes, so e.g. gemini-flash and
+        # gemini-pro scores for the same clip don't collide in the cache.
+        h = hashlib.sha1()
+        h.update(f"{self.config.provider}:{self.config.model}\n".encode())
+        h.update(Path(clip_path).read_bytes())
+        return Path(self.config.cache_dir) / f"{h.hexdigest()}.json"
 
     # --- public API ------------------------------------------------------
     def score(self, clip_path: str, video_summary: str, duration_s: float) -> dict:
