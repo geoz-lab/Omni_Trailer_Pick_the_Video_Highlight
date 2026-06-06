@@ -134,8 +134,13 @@ def main() -> None:
         max_grad_norm=optim_cfg.get("max_grad_norm", 1.0),
     ), logger=logger)
 
+    log_cfg = cfg.get("logging", {})
     samples = read_manifest(cfg["data"]["train_manifest"])
-    trainer.train(samples, rollout_fn)
+    trainer.train(
+        samples, rollout_fn,
+        save_dir=log_cfg.get("save_dir", "checkpoints/"),
+        save_every=log_cfg.get("save_every_steps", 0),
+    )
 
 
 if __name__ == "__main__":

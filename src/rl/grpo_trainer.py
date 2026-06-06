@@ -102,14 +102,29 @@ class GRPOTrainer:
             "malformed_frac": sum(c.span is None for c in group) / g,
         }
 
-    def train(self, samples, rollout_fn) -> None:
-        """Main loop. ``rollout_fn(sample) -> (inputs, group)`` produces a GRPO group."""
+    def _save(self, save_dir: str, tag) -> None:
+        """Save the trained LoRA adapter (reload via OmniThinker.load(lora_path=...))."""
+        from pathlib import Path
+
+        out = Path(save_dir) / f"adapter_{tag}"
+        out.mkdir(parents=True, exist_ok=True)
+        self.policy.model.save_pretrained(str(out))
+        if self.logger is not None:
+            self.logger.log.info("saved adapter -> %s", out)
+
+    def train(self, samples, rollout_fn, save_dir: str | None = None, save_every: int = 0) -> None:
+        """Main loop. ``rollout_fn(sample) -> (inputs, group)`` produces a GRPO group.
+
+        Periodically (and at the end) saves the policy's LoRA adapter to ``save_dir``.
+        """
         import torch
 
         self.optimizer.zero_grad()
+        last_step = -1
         for step, sample in enumerate(samples):
             if step >= self.config.max_steps:
                 break
+            last_step = step
             inputs, group = rollout_fn(sample)
             metrics = self.step(inputs, group)
 
@@ -123,3 +138,9 @@ class GRPOTrainer:
 
             if self.logger is not None:
                 self.logger.log_metrics(metrics, step=step)
+
+            if save_dir and save_every and (step + 1) % save_every == 0:
+                self._save(save_dir, step + 1)
+
+        if save_dir and last_step >= 0:
+            self._save(save_dir, "final")

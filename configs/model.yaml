@@ -9,7 +9,7 @@ thinker:
   backbone: Qwen/Qwen2.5-Omni-7B
   modalities: [video, audio, text]      # ingested natively, no custom fusion
   max_video_seconds: 600
-  frame_rate: 1                         # frames/sec fed to the omni model (lower = fewer vision tokens)
+  frame_rate: 0.5                       # frames/sec fed to the omni model (lower = fewer vision tokens; good for ~90s clips)
   video_max_pixels: 200704             # per-frame cap (~448x448, ~256 vision tokens/frame).
                                         # Vision attention is O(tokens^2); this bounds GPU memory.
   audio_sample_rate: 16000
@@ -23,8 +23,8 @@ thinker:
 selector:
   output_format: tokens                 # e.g. "<start>02:14</start><end>02:59</end>"
   min_clip_seconds: 5
-  max_clip_seconds: 60
-  target_clip_seconds: 45
+  max_clip_seconds: 45                   # source clips are ~90s
+  target_clip_seconds: 25               # preferred trailer length (drives the reward length penalty)
   num_candidates_per_video: 4           # group size for GRPO rollouts
 
 # --- Lightweight proposal encoders (NOT the fusion; just narrow the search) ---
