@@ -33,6 +33,8 @@ class OmniFusion:
         self.frame_rate = frame_rate
         self.use_audio_in_video = use_audio_in_video
         self.video_max_pixels = video_max_pixels
+        # resolved per build_inputs (audio is dropped for clips with no audio track)
+        self.last_use_audio = use_audio_in_video
 
     def _conversation(self, sample: FusionInputs, prompt: str) -> list[dict]:
         return [
@@ -50,16 +52,24 @@ class OmniFusion:
         ]
 
     def build_inputs(self, sample: FusionInputs, prompt: str) -> dict:
-        """Return a dict of model-ready tensors for the omni thinker."""
+        """Return a dict of model-ready tensors for the omni thinker.
+
+        Audio is used only if requested AND the clip actually has an audio track
+        (many stock clips don't); the resolved choice is stored in
+        ``self.last_use_audio`` so generation/forward stay consistent.
+        """
         from qwen_omni_utils import process_mm_info
+
+        from ..utils.audio_utils import has_audio
+
+        use_audio = self.use_audio_in_video and has_audio(sample.video_path)
+        self.last_use_audio = use_audio
 
         conversation = self._conversation(sample, prompt)
         text = self.processor.apply_chat_template(
             conversation, add_generation_prompt=True, tokenize=False
         )
-        audios, images, videos = process_mm_info(
-            conversation, use_audio_in_video=self.use_audio_in_video
-        )
+        audios, images, videos = process_mm_info(conversation, use_audio_in_video=use_audio)
         inputs = self.processor(
             text=text,
             audio=audios,
@@ -67,6 +77,6 @@ class OmniFusion:
             videos=videos,
             return_tensors="pt",
             padding=True,
-            use_audio_in_video=self.use_audio_in_video,
+            use_audio_in_video=use_audio,
         )
         return inputs

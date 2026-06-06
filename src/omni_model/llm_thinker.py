@@ -74,6 +74,12 @@ class OmniThinker:
     def _device(self):
         return next(self.model.parameters()).device
 
+    def _use_audio(self) -> bool:
+        """Audio flag resolved for the most recent build_inputs (False if no track)."""
+        if self.fusion is not None:
+            return self.fusion.last_use_audio
+        return self.config.use_audio_in_video
+
     def _prepare(self, sample: FusionInputs, prompt: str) -> dict:
         assert self.fusion is not None, "call load() first"
         inputs = self.fusion.build_inputs(sample, prompt)
@@ -88,7 +94,7 @@ class OmniThinker:
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                use_audio_in_video=self.config.use_audio_in_video,
+                use_audio_in_video=self._use_audio(),
                 return_audio=False,
                 do_sample=False,
                 max_new_tokens=max_new_tokens,
@@ -106,7 +112,7 @@ class OmniThinker:
         with torch.no_grad():
             out = self.model.generate(
                 **inputs,
-                use_audio_in_video=self.config.use_audio_in_video,
+                use_audio_in_video=self._use_audio(),
                 return_audio=False,
                 do_sample=True,
                 temperature=temperature,
@@ -140,7 +146,8 @@ class OmniThinker:
         model_inputs = {k: (v.to(device) if hasattr(v, "to") else v)
                         for k, v in inputs.items() if k != "input_ids"}
         attn = torch.ones_like(full)
-        out = self.model(input_ids=full, attention_mask=attn, **model_inputs)
+        out = self.model(input_ids=full, attention_mask=attn,
+                         use_audio_in_video=self._use_audio(), **model_inputs)
         # logits at position t predict token t+1; align to the continuation block
         start = prompt_ids.shape[1] - 1
         logits = out.logits[0, start:start + len(token_ids), :]
