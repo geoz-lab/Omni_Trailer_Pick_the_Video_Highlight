@@ -70,6 +70,10 @@ reward-hacking by just emitting the longest allowed clip.
 > So the meaningful target is the **post-GRPO** row: GRPO should produce a ~25 s
 > goal-and-celebration cut that scores well above both. (Filled after training.)
 
+| Original (full 90 s) | Picked highlight — pre-GRPO (10 s) |
+| :---: | :---: |
+| <img src="demo_video/canada_demo_90s.gif" width="360" alt="canada original"/> | <img src="output/canada_demo_90s_highlight.gif" width="360" alt="canada pre-GRPO trailer"/> |
+
 ---
 
 ## Goal
