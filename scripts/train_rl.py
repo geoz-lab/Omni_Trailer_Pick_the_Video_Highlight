@@ -62,11 +62,15 @@ def build_thinker(model_cfg: dict, trainable_lora: dict | None) -> OmniThinker:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default="configs/train_rl.yaml")
+    ap.add_argument("--max-steps", type=int, default=None,
+                    help="override optim.max_steps (e.g. --max-steps 2 for a quick sanity run)")
     args = ap.parse_args()
 
     import torch
 
     cfg = yaml.safe_load(open(args.config))
+    if args.max_steps is not None:
+        cfg.setdefault("optim", {})["max_steps"] = args.max_steps
     assert cfg["algorithm"] == "grpo", "default recipe is GRPO; see ppo_trainer for PPO"
     model_cfg = yaml.safe_load(open(cfg["model_config"]))
     reward_cfg = yaml.safe_load(open(cfg["reward_config"]))
