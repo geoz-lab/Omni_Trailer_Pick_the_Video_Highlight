@@ -36,8 +36,6 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
 
-How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
-
 **Demo score — Canada (90s original)**
 
 | Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
