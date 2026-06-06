@@ -80,6 +80,16 @@ class OmniThinker:
             return self.fusion.last_use_audio
         return self.config.use_audio_in_video
 
+    def _thinker(self):
+        """The thinker submodule (has a real forward; the top-level omni model
+        only implements generate). Works through the PEFT/LoRA wrapper."""
+        m = self.model
+        if hasattr(m, "base_model"):        # PeftModel -> LoraModel
+            m = m.base_model
+            if hasattr(m, "model"):         # LoraModel -> Qwen2_5OmniForConditionalGeneration
+                m = m.model
+        return getattr(m, "thinker", m)
+
     def _prepare(self, sample: FusionInputs, prompt: str) -> dict:
         assert self.fusion is not None, "call load() first"
         inputs = self.fusion.build_inputs(sample, prompt)
@@ -137,6 +147,8 @@ class OmniThinker:
         Keeps gradients so GRPO can backprop through the current policy. Returns a
         1-D tensor of length ``len(token_ids)``.
         """
+        import inspect
+
         import torch
 
         device = self._device()
@@ -147,8 +159,14 @@ class OmniThinker:
         model_inputs = {k: (v.to(device) if hasattr(v, "to") else v)
                         for k, v in inputs.items() if k not in ("input_ids", "attention_mask")}
         attn = torch.ones_like(full)
-        out = self.model(input_ids=full, attention_mask=attn,
-                         use_audio_in_video=self._use_audio(), **model_inputs)
+
+        thinker = self._thinker()
+        kwargs = dict(input_ids=full, attention_mask=attn, **model_inputs)
+        # only pass use_audio_in_video if the thinker forward accepts it
+        if "use_audio_in_video" in inspect.signature(thinker.forward).parameters:
+            kwargs["use_audio_in_video"] = self._use_audio()
+        out = thinker(**kwargs)
+
         # logits at position t predict token t+1; align to the continuation block
         start = prompt_ids.shape[1] - 1
         logits = out.logits[0, start:start + len(token_ids), :]
