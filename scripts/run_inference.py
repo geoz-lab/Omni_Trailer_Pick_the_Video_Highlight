@@ -36,6 +36,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--config", default="configs/model.yaml")
     p.add_argument("--checkpoint", default=None, help="optional trained LoRA adapter")
     p.add_argument("--max-new-tokens", type=int, default=64)
+    p.add_argument("--frame-rate", type=float, default=None,
+                   help="override fps fed to the model (lower for long videos)")
+    p.add_argument("--max-pixels", type=int, default=None,
+                   help="override per-frame pixel cap (lower for long videos)")
     p.add_argument("--gif", dest="gif", action="store_true", default=True)
     p.add_argument("--no-gif", dest="gif", action="store_false")
     return p.parse_args()
@@ -50,8 +54,8 @@ def main() -> None:
     log.info("Loading omni thinker %s ...", tcfg["backbone"])
     thinker = OmniThinker(ThinkerConfig(
         backbone=tcfg["backbone"],
-        frame_rate=tcfg.get("frame_rate", 2.0),
-        video_max_pixels=tcfg.get("video_max_pixels", 200704),
+        frame_rate=args.frame_rate or tcfg.get("frame_rate", 2.0),
+        video_max_pixels=args.max_pixels or tcfg.get("video_max_pixels", 200704),
         dtype=tcfg.get("dtype", "bfloat16"),
         attn_implementation=tcfg.get("attn_implementation", "flash_attention_2"),
     )).load(lora_path=args.checkpoint)

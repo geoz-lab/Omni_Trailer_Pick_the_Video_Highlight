@@ -38,17 +38,32 @@ How the judge rates each clip on the six axes (0–1) and the weighted **reward*
 A good trailer should beat the full video; the GRPO-trained policy should beat the
 untrained one.
 
+How the judge rates each clip on the six axes (0–1) and the weighted **reward**.
+A good trailer should beat the full video; the GRPO-trained policy should beat the
+untrained one.
+
+**Demo 1 — Ronaldo goal (33 s source)**
+
 | Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Original full video (33 s) | 1.00 | 0.80 | 1.00 | 1.00 | 1.00 | 0.95 | **0.939** |
 | Picked highlight — pre-GRPO (5 s) | 0.90 | 0.80 | 0.90 | 1.00 | 0.90 | 0.95 | **0.863** |
 | Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
+**Demo 2 — Canada (longer source)**
+
+| Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Original full video | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Picked highlight — pre-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
 > Scored with the Gemini 2.5 Pro judge via
 > `python scripts/evaluate_reward.py --eval-model`. **Before training**, the
-> untrained policy's pick scores slightly *below* the full clip — expected, and
-> exactly the gap GRPO is meant to close. The **post-GRPO** row gets filled after
-> RL training to show the lift.
+> untrained policy's pick can score *below* the full clip — expected, and exactly
+> the gap GRPO is meant to close. The **post-GRPO** rows get filled after RL
+> training to show the lift. (A longer source like Demo 2 leaves more headroom for
+> the trailer to beat the full video than the very short Ronaldo clip.)
 
 ---
 
