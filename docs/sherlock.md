@@ -23,17 +23,34 @@ scp demo_video/Ronaldo_goal_demo.mp4 \
 
 ## 1. One-time setup (login node — has internet)
 
+> ⚠️ Do **not** use `conda env create -f environment.yml` here — Sherlock is
+> CentOS 7 (GLIBC 2.17) and conda's `pytorch-cuda` needs GLIBC ≥ 2.27, while the
+> system GCC 4.8.5 can't build native wheels. Use the verified recipe below
+> (also in the README "Environment setup" section).
+
 ```bash
 cd $SCRATCH
 git clone https://github.com/geoz-lab/Omni_Trailer_Pick_the_Video_Highlight.git
 cd Omni_Trailer_Pick_the_Video_Highlight
 
-conda env create -f environment.yml      # put envs on $SCRATCH, not $HOME
+conda create -y -n omni_trailer python=3.11
 conda activate omni_trailer
 
-module load cuda/12.1.1                   # match your torch CUDA
-pip install flash-attn --no-build-isolation   # build last, against loaded CUDA + torch
+# native deps from conda-forge (GCC 4.8.5 can't build them; wandb pip-build needs Go)
+conda install -y -c conda-forge av scipy librosa numba wandb
+
+# torch from pip cu121 wheels (manylinux2014 = GLIBC 2.17; conda pytorch-cuda won't run)
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# rest as wheels; transformers pinned 4.52.4 (>=4.53 needs torch>=2.7 -> GLIBC>=2.27)
+pip install "transformers==4.52.4" accelerate peft qwen-omni-utils \
+    google-genai openai imageio imageio-ffmpeg moviepy opencv-python-headless
+pip install --force-reinstall --no-cache-dir pillow   # bundles libtiff; avoids conda mismatch
 ```
+
+(`attn_implementation: sdpa` in `configs/model.yaml` means **no flash-attn build
+needed**. Build it later only if you want the speedup.)
 
 **Pre-download the model** (compute nodes can't reach HuggingFace):
 

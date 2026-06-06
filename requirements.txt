@@ -1,41 +1,52 @@
-# pip fallback for the cluster env (prefer environment.yml). Install torch first,
-# matched to your CUDA, then the rest. flash-attn is built against torch/CUDA.
+# Verified working set for inference on a GLIBC-2.17 cluster (Sherlock / CentOS 7).
+# IMPORTANT: install order and source matter on old-GLIBC systems. See the README
+# "Environment setup" section / docs/sherlock.md — a plain `pip install -r` will
+# NOT work here because:
+#   * the system GCC (4.8.5) can't build native packages from source, and
+#   * conda's pytorch-cuda needs GLIBC >= 2.27.
+# So: native deps come from conda-forge, torch from PyTorch's cu121 wheels.
 
-# Core
+# --- from conda-forge (prebuilt; system GCC is too old to compile these) -------
+# conda install -c conda-forge av scipy librosa numba wandb
+#   av        : video decode for qwen-omni-utils
+#   scipy     : pulled by librosa (NumPy/Fortran build fails on GCC 4.8.5)
+#   librosa   : audio features (qwen-omni-utils needs it)
+#   numba     : librosa dep
+#   wandb     : OPTIONAL logging; pip build needs the Go compiler
+
+# --- PyTorch: pip cu121 wheels (conda pytorch-cuda needs GLIBC >= 2.27) ---------
+# torch <= 2.5 keeps manylinux2014 (GLIBC 2.17). Do NOT go >= 2.6 on this OS.
+#   pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+#       --index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+
+# --- pip wheels --------------------------------------------------------------
+# transformers PINNED: >= 4.53 imports torch.float8_e8m0fnu (needs torch >= 2.7
+# -> GLIBC >= 2.27, impossible here). 4.52.4 has full Qwen2.5-Omni support.
+transformers==4.52.4
+accelerate>=0.30
+peft>=0.11
+qwen-omni-utils
+einops>=0.7
+google-genai>=0.3
+openai>=1.30
+imageio>=2.34
+imageio-ffmpeg>=0.4.9
+moviepy>=1.0.3
+opencv-python-headless>=4.9
 numpy>=1.24
 pyyaml>=6.0
 tqdm>=4.66
+rich>=13.7
 
-# Deep learning
-torch>=2.1
-torchvision>=0.16
-torchaudio>=2.1
-transformers>=4.52
-accelerate>=0.30
-peft>=0.11
-einops>=0.7
-# flash-attn>=2.5            # install last: pip install flash-attn --no-build-isolation
-
-# Omni backbone + encoders
-qwen-omni-utils
-openai-whisper>=20231117
-open-clip-torch>=2.24
-librosa>=0.10
-
-# Reward judge APIs
-google-genai>=0.3
-openai>=1.30
+# pillow: install from a pip wheel AFTER everything else; it bundles its own
+# libtiff, avoiding the conda libtiff soname mismatch (libtiff.so.5 not found):
+#   pip install --force-reinstall --no-cache-dir pillow
 pillow>=10.0
 
-# Video / audio I/O + GIF
-moviepy>=1.0.3
-imageio>=2.34
-imageio-ffmpeg>=0.4.9
-opencv-python-headless>=4.9
-
-# Logging / experiment tracking
-rich>=13.7
-# wandb is OPTIONAL (only used when configs/train_rl.yaml logging.backend == wandb).
-# Recent wandb builds wandb-core from source via pip and needs the Go compiler;
-# prefer conda-forge:  conda install -c conda-forge wandb
-# or force a prebuilt wheel: pip install --only-binary=:all: wandb
+# Training-only extras (not needed for inference):
+#   openai-whisper, open-clip-torch   # proposal-stage encoders
+#   flash-attn                        # faster/lower-memory attention; needs a CUDA build:
+#                                     #   pip install flash-attn --no-build-isolation

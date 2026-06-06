@@ -23,16 +23,18 @@ with the full video context.
 
 The model watches a full clip and cuts the single most trailer-worthy moment.
 
-| Input video (full clip) | Picked highlight (trailer) |
+| Input video (33 s full clip) | Picked highlight (5 s trailer) |
 | :---: | :---: |
-| ![input](demo_video/Ronaldo_goal_demo.gif) | ![trailer](output/Ronaldo_goal_highlight.gif) |
+| ![input](demo_video/Ronaldo_goal_demo.gif) | ![trailer](output/Ronaldo_goal_demo_highlight.gif) |
 
-> The input GIF is the bundled `demo_video/Ronaldo_goal_demo.mp4`. The trailer GIF
-> on the right is produced when you run inference on a GPU
-> (`output/Ronaldo_goal_highlight.gif`) — it appears here after your first run.
+> Real output from `scripts/run_inference.py` on the bundled
+> `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (Qwen2.5-Omni-7B). From the
+> 33 s clip the model selected **2.0 s → 7.0 s** — an attacking move into a shot
+> on goal with the keeper diving — and exported it as the trailer on the right.
 
 ```bash
 python scripts/run_inference.py            # uses the Ronaldo demo by default
+# -> output/Ronaldo_goal_demo_highlight.mp4 + .gif
 ```
 
 ---
@@ -140,11 +142,67 @@ Inference and RL training run the Qwen2.5-Omni backbone and need a GPU
 ```bash
 git clone https://github.com/geoz-lab/Omni_Trailer_Pick_the_Video_Highlight.git
 cd Omni_Trailer_Pick_the_Video_Highlight
-conda env create -f environment.yml      # or: pip install -r requirements.txt
-conda activate omni_trailer
-# install flash-attn last, matched to your torch/CUDA:
-# pip install flash-attn --no-build-isolation
 ```
+
+On a **modern OS (GLIBC ≥ 2.27)** the conda file just works:
+
+```bash
+conda env create -f environment.yml
+conda activate omni_trailer
+# optional speedup: pip install flash-attn --no-build-isolation
+```
+
+### Environment setup on an old-GLIBC HPC cluster (verified: Sherlock / CentOS 7, GLIBC 2.17)
+
+`conda env create -f environment.yml` and a plain `pip install -r requirements.txt`
+**do not work** there, because the system GCC (4.8.5) can't build native packages
+and conda's `pytorch-cuda` needs GLIBC ≥ 2.27. Run these from a **login node**
+(it has internet; compute nodes don't), in order:
+
+```bash
+# 1. base env
+conda create -y -n omni_trailer python=3.11
+conda activate omni_trailer
+
+# 2. native/compiled deps from conda-forge (system GCC can't build them;
+#    wandb's pip build needs Go)
+conda install -y -c conda-forge av scipy librosa numba wandb
+
+# 3. PyTorch from pip cu121 wheels (conda pytorch-cuda needs GLIBC >= 2.27;
+#    torch <= 2.5 keeps manylinux2014 = GLIBC 2.17)
+pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu121
+
+# 4. the rest as wheels. transformers PINNED 4.52.4: >=4.53 needs
+#    torch.float8_e8m0fnu (torch>=2.7 -> GLIBC>=2.27, impossible here)
+pip install "transformers==4.52.4" accelerate peft qwen-omni-utils \
+    google-genai openai imageio imageio-ffmpeg moviepy opencv-python-headless
+
+# 5. pillow from a pip wheel (bundles its own libtiff; conda pillow mismatches)
+pip install --force-reinstall --no-cache-dir pillow
+
+# 6. pre-download the model on the login node (compute nodes are offline)
+export HF_HOME=$SCRATCH/hf
+huggingface-cli download Qwen/Qwen2.5-Omni-7B
+```
+
+Then **on the GPU node**, before running:
+
+```bash
+conda deactivate; conda activate omni_trailer        # avoid env-stacking PATH shadowing
+export HF_HOME=$SCRATCH/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export TOKENIZERS_PARALLELISM=false
+```
+
+Notes:
+- `configs/model.yaml` uses `attn_implementation: sdpa` so **no flash-attn build is
+  required**. flash-attn is faster and lower-memory if you can build it.
+- The code handles two cluster-specific quirks automatically: it loads Qwen2.5-Omni
+  text-only and neutralizes the `torch.load` guard for the trusted speaker file
+  (see the note below), since torch ≥ 2.6 isn't installable on GLIBC 2.17.
+- See [`docs/sherlock.md`](docs/sherlock.md) for Slurm jobs, the demo-video copy,
+  and the reward-API egress caveat.
 
 The reward judge calls an external VLM API. Put your key in a `.env` file
 (gitignored; auto-loaded by the scripts) — or just `export` it:

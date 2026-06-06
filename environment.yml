@@ -4,6 +4,10 @@
 # Notes:
 #   - Pin CUDA to match your driver; this assumes CUDA 12.1 wheels.
 #   - flash-attn must be built against the installed torch/CUDA; install it last.
+#   - ⚠️ This file targets a MODERN OS (GLIBC >= 2.27). On old-GLIBC HPC clusters
+#     (e.g. Sherlock / CentOS 7, GLIBC 2.17) conda's pytorch-cuda will NOT run and
+#     pip source builds fail on the old GCC — use the README "Environment setup"
+#     recipe (conda-forge natives + pip cu121 torch + transformers==4.52.4) instead.
 name: omni_trailer
 channels:
   - pytorch
