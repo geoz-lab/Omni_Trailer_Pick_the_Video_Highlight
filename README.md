@@ -60,14 +60,14 @@ reward-hacking by just emitting the longest allowed clip.
 
 | Clip | Excite | Emotion | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Original full video (90 s) | 0.80 | 0.60 | 0.90 | 1.00 | 0.90 | 0.40 | **0.175** |
-| Picked highlight — pre-GRPO (0–10 s) | 0.40 | 0.10 | 0.30 | 0.20 | 0.50 | 0.20 | **0.165** |
+| Original full video (90 s) | 0.85 | 0.60 | 1.00 | 1.00 | 0.95 | 0.45 | **0.218** |
+| Picked highlight — pre-GRPO (0–10 s) | 0.20 | 0.10 | 0.20 | 0.10 | 0.40 | 0.10 | **0.060** |
 | Picked highlight — post-GRPO (~25 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
-> Under the trailer-focused reward, the **full 90 s video scores low** — it's not a
-> trailer (too long → big length penalty, weak `trailer_quality`). The **pre-GRPO**
-> pick (first 10 s, pre-kickoff dead time) is also weak. Both are ~0.17, so the
-> meaningful target is the **post-GRPO** row: GRPO should produce a ~25 s
+> Under the trailer-focused reward, the **full 90 s video scores low** (**0.218**) —
+> it's not a trailer (too long → ~0.52 length penalty, weak `trailer_quality`). The
+> **pre-GRPO** pick (first 10 s, pre-kickoff dead time) is weaker still (**0.060**).
+> So the meaningful target is the **post-GRPO** row: GRPO should produce a ~25 s
 > goal-and-celebration cut that scores well above both. (Filled after training.)
 
 ---
