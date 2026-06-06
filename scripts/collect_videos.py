@@ -88,19 +88,22 @@ def _pick_mp4(video: dict, max_width: int) -> str | None:
     return max(ok or mp4s, key=lambda f: f.get("width") or 0)["link"]
 
 
-def pexels_items(queries: list[str], limit: int, max_width: int) -> list[tuple[str, str, str]]:
+def pexels_items(queries: list[str], limit: int, max_width: int,
+                 skip_ids: set[int] | None = None) -> list[tuple[str, str, str]]:
     """Return up to `limit` (url, stem, summary) across one or more queries.
 
     Paginates the Pexels API (80/page) and spreads the budget over the queries so
-    you can reach hundreds/thousands of clips. Dedupes by video id.
+    you can reach hundreds/thousands of clips. Dedupes by video id, and skips any
+    id in `skip_ids` (e.g. clips already in your manifest) so re-running with
+    overlapping topics still yields `limit` *new* videos.
     """
     key = os.environ.get("PEXELS_API_KEY")
     if not key:
         raise RuntimeError("Set PEXELS_API_KEY (in .env) for --source pexels. "
                            "Get a free key at https://www.pexels.com/api/")
+    seen: set[int] = set(skip_ids or ())
     per_query = max(1, -(-limit // len(queries)))   # ceil
     items: list[tuple[str, str, str]] = []
-    seen: set[int] = set()
     for query in queries:
         got = 0
         page = 1
@@ -138,25 +141,34 @@ def main() -> None:
     out_dir = Path(args.out); out_dir.mkdir(parents=True, exist_ok=True)
     man_path = Path(args.manifest); man_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if args.source == "pexels":
-        # collapse internal whitespace/newlines so a pasted line-break can't
-        # produce a malformed query (Pexels returns HTTP 400)
-        queries = [" ".join(q.split()) for q in args.query.split(",") if q.strip()]
-        items = pexels_items(queries, args.limit, args.max_width)
-    else:
-        items = [(u, Path(u).stem, s) for u, s in SAMPLE_CLIPS[:args.limit]]
-
-    if not items:
-        print("No videos found.")
-        return
-
-    # avoid duplicate manifest lines
+    # read what's already in the manifest first, so we can skip those clips
     existing = set()
     if man_path.exists():
         for line in man_path.read_text().splitlines():
             line = line.strip()
             if line:
                 existing.add(json.loads(line)["video"])
+    # pexels ids already collected -> don't re-fetch them (keeps --limit = new clips)
+    existing_pexels_ids: set[int] = set()
+    for p in existing:
+        name = Path(p).stem
+        if name.startswith("pexels_"):
+            try:
+                existing_pexels_ids.add(int(name.split("_", 1)[1]))
+            except ValueError:
+                pass
+
+    if args.source == "pexels":
+        # collapse internal whitespace/newlines so a pasted line-break can't
+        # produce a malformed query (Pexels returns HTTP 400)
+        queries = [" ".join(q.split()) for q in args.query.split(",") if q.strip()]
+        items = pexels_items(queries, args.limit, args.max_width, skip_ids=existing_pexels_ids)
+    else:
+        items = [(u, Path(u).stem, s) for u, s in SAMPLE_CLIPS[:args.limit]]
+
+    if not items:
+        print("No videos found.")
+        return
 
     added = 0
     with open(man_path, "a") as man:
