@@ -42,13 +42,16 @@ class OmniThinker:
 
         dtype = getattr(torch, self.config.dtype)
         self.processor = Qwen2_5OmniProcessor.from_pretrained(self.config.backbone)
+        # We only need text out, so skip the speech "talker" entirely. This both
+        # saves memory and avoids load_speakers()'s torch.load path, which
+        # transformers blocks on torch < 2.6 (CVE-2025-32434).
         self.model = Qwen2_5OmniForConditionalGeneration.from_pretrained(
             self.config.backbone,
             torch_dtype=dtype,
             attn_implementation=self.config.attn_implementation,
             device_map=self.config.device_map,
+            enable_audio_output=False,
         )
-        # We only need text out; drop the speech "talker" to save memory.
         if hasattr(self.model, "disable_talker"):
             self.model.disable_talker()
         if lora_path:
