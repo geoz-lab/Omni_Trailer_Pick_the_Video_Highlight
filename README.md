@@ -36,20 +36,19 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
 
-**Demo score — Canada (90s original)**
+**Demo score — Canada vs Ireland soccer friendly (90 s source)**
 
 | Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Original full video | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| Picked highlight — pre-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Original full video (90 s) | 0.90 | 0.80 | 0.90 | 1.00 | 0.95 | 0.90 | **0.855** |
+| Picked highlight — pre-GRPO (0–10 s) | 0.30 | 0.10 | 0.10 | 0.40 | 0.70 | 0.10 | **0.221** |
 | Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
 > Scored with the Gemini 2.5 Pro judge via
 > `python scripts/evaluate_reward.py --eval-model`. **Before training**, the
-> untrained policy's pick can score *below* the full clip — expected, and exactly
-> the gap GRPO is meant to close. The **post-GRPO** rows get filled after RL
-> training to show the lift. (A longer source like Demo 2 leaves more headroom for
-> the trailer to beat the full video than the very short Ronaldo clip.)
+> untrained policy grabbed the first 10 s (pre-kickoff dead time), scoring far
+> *below* the full clip (0.221 vs 0.855) — a large gap for GRPO to close. The
+> **post-GRPO** row gets filled after RL training to show the lift.
 
 ---
 
