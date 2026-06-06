@@ -9,9 +9,11 @@ thinker:
   backbone: Qwen/Qwen2.5-Omni-7B
   modalities: [video, audio, text]      # ingested natively, no custom fusion
   max_video_seconds: 600
-  frame_rate: 0.5                       # frames/sec fed to the omni model (lower = fewer vision tokens; good for ~90s clips)
-  video_max_pixels: 200704             # per-frame cap (~448x448, ~256 vision tokens/frame).
-                                        # Vision attention is O(tokens^2); this bounds GPU memory.
+  frame_rate: 0.25                      # frames/sec fed to the omni model. Low because sdpa+mask
+                                        # materializes the NxN vision attention; ~90s clips OOM otherwise.
+                                        # Raise this once flash_attention_2 is installed.
+  video_max_pixels: 100352             # per-frame cap (~316x316, ~128 vision tokens/frame).
+                                        # Vision attention is O(tokens^2); fps x pixels bounds GPU memory.
   audio_sample_rate: 16000
   tasks: [event_detection, scene_understanding, emotion_analysis, story_modeling, cross_modal_reasoning]
   dtype: bfloat16
