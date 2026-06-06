@@ -40,4 +40,6 @@ export TOKENIZERS_PARALLELISM=false
 # export http_proxy="$https_proxy"
 
 nvidia-smi
-python scripts/train_rl.py --config configs/train_rl.yaml
+# chunked training: resume from a saved adapter by setting RESUME, e.g.
+#   sbatch --export=ALL,RESUME=checkpoints/adapter_final slurm/train.sbatch
+python scripts/train_rl.py --config configs/train_rl.yaml ${RESUME:+--resume "$RESUME"}

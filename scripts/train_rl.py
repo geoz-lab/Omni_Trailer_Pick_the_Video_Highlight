@@ -38,14 +38,21 @@ def read_manifest(path: str):
                 yield json.loads(line)
 
 
-def build_thinker(model_cfg: dict, trainable_lora: dict | None) -> OmniThinker:
+def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | None = None) -> OmniThinker:
     tc = model_cfg["thinker"]
     thinker = OmniThinker(ThinkerConfig(
         backbone=tc["backbone"], frame_rate=tc.get("frame_rate", 2.0),
         dtype=tc.get("dtype", "bfloat16"),
         attn_implementation=tc.get("attn_implementation", "flash_attention_2"),
     )).load()
-    if trainable_lora and trainable_lora.get("use_lora", True):
+    if resume:
+        # continue training from a saved adapter (chunked training)
+        from peft import PeftModel
+
+        thinker.model = PeftModel.from_pretrained(thinker.model, resume, is_trainable=True)
+        print(f"[resume] loaded trainable adapter from {resume}")
+        thinker.model.print_trainable_parameters()
+    elif trainable_lora and trainable_lora.get("use_lora", True):
         from peft import LoraConfig, get_peft_model
 
         thinker.model = get_peft_model(thinker.model, LoraConfig(
@@ -64,6 +71,8 @@ def main() -> None:
     ap.add_argument("--config", default="configs/train_rl.yaml")
     ap.add_argument("--max-steps", type=int, default=None,
                     help="override optim.max_steps (e.g. --max-steps 2 for a quick sanity run)")
+    ap.add_argument("--resume", default=None,
+                    help="continue from a saved adapter dir (e.g. checkpoints/adapter_final) for chunked training")
     args = ap.parse_args()
 
     import torch
@@ -79,7 +88,7 @@ def main() -> None:
     # policy (trainable LoRA). The KL reference reuses the policy base with the
     # LoRA adapter disabled (reference=None) -> one 7B model, not two. Set a
     # separate frozen thinker here only if you have spare GPU memory.
-    policy = build_thinker(model_cfg, cfg.get("peft"))
+    policy = build_thinker(model_cfg, cfg.get("peft"), resume=args.resume)
     reference = None
 
     selector = TrailerSelector(
