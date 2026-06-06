@@ -191,6 +191,17 @@ python scripts/evaluate_reward.py --clips output
 Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch),
 [`slurm/train.sbatch`](slurm/train.sbatch).
 
+## Cluster note: torch < 2.6 + the speaker file
+
+On GLIBC-2.17 clusters (e.g. Sherlock/CentOS 7) you're pinned to torch 2.5.x —
+newer CUDA wheels need GLIBC ≥ 2.27. Qwen2.5-Omni's `from_pretrained` always
+calls `load_speakers()`, and transformers blocks its `torch.load` on torch < 2.6
+(CVE-2025-32434). `OmniThinker.load()` therefore neutralizes that guard **only**
+for the Qwen module, to load the **official** speaker file (`weights_only`).
+This is a deliberate, scoped exception for a trusted file — don't generalize it
+to untrusted checkpoints. On a GLIBC ≥ 2.27 box, prefer torch ≥ 2.6 and drop the
+patch.
+
 ## Status
 
 The omni inference path (`run_inference.py`), the GRPO training loop
