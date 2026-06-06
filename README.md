@@ -25,7 +25,7 @@ The model watches a full clip and cuts the single most trailer-worthy moment.
 
 | Input video (33 s full clip) | Picked highlight (5 s trailer) |
 | :---: | :---: |
-| ![input](demo_video/Ronaldo_goal_demo.gif) | ![trailer](output/Ronaldo_goal_demo_highlight.gif) |
+| <img src="demo_video/Ronaldo_goal_demo.gif" width="360" alt="input clip"/> | <img src="output/Ronaldo_goal_demo_highlight.gif" width="360" alt="picked highlight"/> |
 
 > Real output from `scripts/run_inference.py` on the bundled
 > `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (Qwen2.5-Omni-7B). From the
@@ -219,7 +219,7 @@ set `judge.provider: openai` in `configs/reward.yaml` and provide `OPENAI_API_KE
 
 ```bash
 # Pick the highlight from the bundled demo and export clip + GIF
-python scripts/run_inference.py            # -> output/Ronaldo_goal_highlight.mp4 + .gif
+python scripts/run_inference.py            # -> output/Ronaldo_goal_demo_highlight.mp4 + .gif
 
 # ...or any video
 python scripts/run_inference.py --video path/to.mp4 --output output

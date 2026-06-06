@@ -75,7 +75,7 @@ sh_dev -p gpu -G 1 -C GPU_MEM:80GB -t 1:00:00   # verify constraint with `sinfo`
 module load cuda/12.1.1
 conda activate omni_trailer
 export HF_HOME=$SCRATCH/hf HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
-python scripts/run_inference.py        # -> output/Ronaldo_goal_highlight.mp4 + .gif
+python scripts/run_inference.py        # -> output/Ronaldo_goal_demo_highlight.mp4 + .gif
 ```
 
 ## 3. Batch inference
@@ -126,20 +126,25 @@ reference instead (ask if you want this wired in).
 
 | Symptom | Cause / fix |
 | --- | --- |
+| `ImportError ... libm.so.6: version GLIBC_2.27 not found` (torch) | conda `pytorch-cuda` needs GLIBC ≥ 2.27; install pip cu121 wheels (`torch==2.5.1`, manylinux2014) instead (§1) |
+| `module 'torch' has no attribute 'float8_e8m0fnu'` | transformers too new for torch ≤ 2.5; pin `transformers==4.52.4` |
+| `ImportError: libtiff.so.5: cannot open shared object file` (Pillow) | conda Pillow vs libtiff mismatch; `pip install --force-reinstall --no-cache-dir pillow` |
+| `scipy`/`av` build fails / "NumPy requires GCC >= 9.3" | system GCC 4.8.5 too old; install those from conda-forge, don't build from source |
+| `cannot import name 'Qwen2_5OmniForConditionalGeneration'` | wrong env is active (env-stacking PATH shadow); `which python` → `conda deactivate; conda activate omni_trailer; hash -r` |
+| `CUDA out of memory` in the vision encoder (huge alloc) | too many vision tokens; lower `frame_rate` and `video_max_pixels` in `configs/model.yaml` |
 | `OSError ... can't reach huggingface.co` | Pre-download on login node; set `HF_HUB_OFFLINE=1` |
 | Reward call hangs / times out | Compute node has no internet → set the proxy (§4) |
 | `CUDA out of memory` in training | Use 80 GB GPU, or adapter-disable reference (§4) |
-| `flash-attn` import error | Rebuild against the loaded CUDA + your torch |
 | `wandb` build fails: "Did not find the 'go' binary" | Install from conda-forge: `conda install -n omni_trailer -c conda-forge wandb` (pip builds wandb-core from source). It's optional anyway. |
 | `$HOME` quota exceeded | Move repo/env/`HF_HOME`/checkpoints to `$SCRATCH` |
 | Job killed at time limit | `gpu` partition caps ~2 days; checkpoint + resume |
 
 ## 6. Fill in the README trailer GIF
 
-After a successful run, `output/Ronaldo_goal_highlight.gif` exists on Sherlock.
+After a successful run, `output/Ronaldo_goal_demo_highlight.gif` exists on Sherlock.
 Copy it back and commit so the README's right-hand demo cell renders:
 
 ```bash
-scp <sunet>@login.sherlock.stanford.edu:$SCRATCH/.../output/Ronaldo_goal_highlight.gif output/
-git add -f output/Ronaldo_goal_highlight.gif && git commit -m "Add trailer GIF" && git push
+scp <sunet>@login.sherlock.stanford.edu:$SCRATCH/.../output/Ronaldo_goal_demo_highlight.gif output/
+git add -f output/Ronaldo_goal_demo_highlight.gif && git commit -m "Add trailer GIF" && git push
 ```
