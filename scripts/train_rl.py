@@ -125,9 +125,11 @@ def main() -> None:
         [p for p in policy.model.parameters() if p.requires_grad],
         lr=optim_cfg["lr"], weight_decay=optim_cfg.get("weight_decay", 0.0),
     )
+    _log_cfg = cfg.get("logging", {})
     logger = MetricLogger(
-        backend=cfg.get("logging", {}).get("backend", "none"),
-        project=cfg.get("logging", {}).get("project", "omni-trailer"),
+        backend=_log_cfg.get("backend", "none"),
+        project=_log_cfg.get("project", "omni-trailer"),
+        metrics_file=str(Path(_log_cfg.get("save_dir", "checkpoints/")) / "metrics.jsonl"),
     )
 
     trainer = GRPOTrainer(policy, reference, optimizer, GRPOConfig(
