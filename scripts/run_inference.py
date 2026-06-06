@@ -51,6 +51,7 @@ def main() -> None:
     thinker = OmniThinker(ThinkerConfig(
         backbone=tcfg["backbone"],
         frame_rate=tcfg.get("frame_rate", 2.0),
+        video_max_pixels=tcfg.get("video_max_pixels", 200704),
         dtype=tcfg.get("dtype", "bfloat16"),
         attn_implementation=tcfg.get("attn_implementation", "flash_attention_2"),
     )).load(lora_path=args.checkpoint)

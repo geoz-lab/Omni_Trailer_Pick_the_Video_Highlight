@@ -19,6 +19,7 @@ from .fusion_model import FusionInputs, OmniFusion
 class ThinkerConfig:
     backbone: str = "Qwen/Qwen2.5-Omni-7B"
     frame_rate: float = 2.0
+    video_max_pixels: int = 200704        # per-frame cap; bounds vision-attention memory
     dtype: str = "bfloat16"
     attn_implementation: str = "flash_attention_2"
     device_map: str = "auto"
@@ -65,7 +66,8 @@ class OmniThinker:
 
             self.model = PeftModel.from_pretrained(self.model, lora_path)
         self.model.eval()
-        self.fusion = OmniFusion(self.processor, self.config.frame_rate, self.config.use_audio_in_video)
+        self.fusion = OmniFusion(self.processor, self.config.frame_rate,
+                                 self.config.use_audio_in_video, self.config.video_max_pixels)
         return self
 
     # --------------------------------------------------------------- helpers

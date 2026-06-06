@@ -27,10 +27,12 @@ class FusionInputs:
 class OmniFusion:
     """Builds Qwen2.5-Omni processor inputs (no learned fusion params)."""
 
-    def __init__(self, processor: Any, frame_rate: float = 2.0, use_audio_in_video: bool = True) -> None:
+    def __init__(self, processor: Any, frame_rate: float = 2.0, use_audio_in_video: bool = True,
+                 video_max_pixels: int = 200704) -> None:
         self.processor = processor
         self.frame_rate = frame_rate
         self.use_audio_in_video = use_audio_in_video
+        self.video_max_pixels = video_max_pixels
 
     def _conversation(self, sample: FusionInputs, prompt: str) -> list[dict]:
         return [
@@ -38,7 +40,10 @@ class OmniFusion:
             {
                 "role": "user",
                 "content": [
-                    {"type": "video", "video": sample.video_path, "fps": self.frame_rate},
+                    # max_pixels caps per-frame resolution -> bounds the number of
+                    # vision tokens, whose self-attention is O(tokens^2) in memory.
+                    {"type": "video", "video": sample.video_path, "fps": self.frame_rate,
+                     "max_pixels": self.video_max_pixels},
                     {"type": "text", "text": prompt},
                 ],
             },
