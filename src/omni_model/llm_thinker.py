@@ -143,8 +143,9 @@ class OmniThinker:
         prompt_ids = inputs["input_ids"].to(device)
         cont = torch.tensor(token_ids, device=device).unsqueeze(0)
         full = torch.cat([prompt_ids, cont], dim=1)
+        # drop input_ids and attention_mask; we build a full-length mask below
         model_inputs = {k: (v.to(device) if hasattr(v, "to") else v)
-                        for k, v in inputs.items() if k != "input_ids"}
+                        for k, v in inputs.items() if k not in ("input_ids", "attention_mask")}
         attn = torch.ones_like(full)
         out = self.model(input_ids=full, attention_mask=attn,
                          use_audio_in_video=self._use_audio(), **model_inputs)
