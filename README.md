@@ -39,6 +39,8 @@ The judge (Gemini 2.5 Pro) scores each candidate clip on six axes (0–1); the
 trailer. Weights favor *punchiness* over *coverage*, so a tight highlight beats the
 long, unedited clip rather than losing to it (see `configs/reward.yaml`).
 
+![Reward model evaluation](Omni_Trailer_Reward.png)
+
 | Axis | Weight | Rewards |
 | --- | :---: | --- |
 | `excitement` | **0.25** | peak energy / thrill of the moment (intensity per second) |
