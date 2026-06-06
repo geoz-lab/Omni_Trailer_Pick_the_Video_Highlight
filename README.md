@@ -2,33 +2,28 @@
 
 > Omni Model + RL for Automatic Video Highlight Generation
 
-Omni Trailer is a multimodal reinforcement learning project for automatic
-highlight and trailer generation.
+Omni Trailer is a multimodal reinforcement learning project for automatic highlight and trailer generation.
 
-Given a video with **visual frames**, **voice/audio**, and **captions/ASR text**,
-the model learns to select the most engaging segment. Instead of relying on
-human-labeled ground-truth highlights, the system uses a **reward model** to judge
-generated candidate clips and trains the trailer selector through
-**reinforcement learning**.
+Given a video with **visual frames**, **voice/audio**, and **captions/ASR text**, the model learns to select the most engaging segment. Instead of relying on
+human-labeled ground-truth highlights, the system uses a **reward model** to judge generated candidate clips and trains the trailer selector through **reinforcement learning**.
 
-The reward model evaluates whether a candidate clip is emotionally engaging,
-semantically important, visually clear, coherent as a short trailer, and aligned
-with the full video context.
+The reward model evaluates whether a candidate clip is emotionally engaging, semantically important, visually clear, coherent as a short trailer, and aligned with the full video context.
+
+The workflow shows as below,
 
 ![Workflow](Omni_Trailer_workflow.png)
 
 ---
 
 ## Demo
-
-The model watches a full clip and cuts the single most trailer-worthy moment.
+Here we use a Ronaldo goal video as a demo to showcase the results. The model watches a full clip and cuts the single most trailer-worthy moment.
 
 | Input video (33 s full clip) | Picked highlight (5 s trailer) |
 | :---: | :---: |
 | <img src="demo_video/Ronaldo_goal_demo.gif" width="360" alt="input clip"/> | <img src="output/Ronaldo_goal_demo_highlight.gif" width="360" alt="picked highlight"/> |
 
 > Real output from `scripts/run_inference.py` on the bundled
-> `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (Qwen2.5-Omni-7B). From the
+> `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (with Qwen2.5-Omni-7B as the base model). From the
 > 33 s clip the model selected **2.0 s → 7.0 s** — an attacking move into a shot
 > on goal with the keeper diving — and exported it as the trailer on the right.
 
@@ -41,17 +36,16 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 ## Goal
 
-Automatically pick the most touching, exciting, or representative highlight
-section from a video, using audio, visual frames, and captions **together**.
+We want automatically pick the most touching, exciting, or representative highlight section from a video, using audio, visual frames, and captions **together**.
 
-## Pipeline
+## RL Training Pipeline
 
 ```
-Video Input
+[Video Input]
     │
-    ├── Visual Frames ──► Visual Encoder ──► visual embeddings
-    ├── Voice / Audio ──► Audio Encoder  ──► audio embeddings
-    └── Caption / ASR ──► Text Encoder   ──► text embeddings
+    ├── Visual Frames ──► Visual Encoder ──► [visual embeddings]
+    ├── Voice / Audio ──► Audio Encoder  ──► [audio embeddings]
+    └── Caption / ASR ──► Text Encoder   ──► [text embeddings]
                                   │
                                   ▼
                          Omni Fusion Model          (joint video + voice + caption)
@@ -71,7 +65,7 @@ Video Input
                                   │                  - audio-visual alignment
                                   │                  - trailer quality
                                   ▼
-                   Reinforcement Learning Training  (PPO / GRPO / DPO-style)
+                   Reinforcement Learning Training  (PPO / GRPO / DPO ...)
                                   │
                                   ▼
                       Update Trailer Omni Model
@@ -87,28 +81,19 @@ Each modality is encoded independently:
 - **Text Encoder** — captions or ASR transcript → text embeddings (tokenizer + LM).
 
 ### 2. Multimodal token fusion
-The `OmniFusionModel` projects all modalities into a shared token space and
-produces a **unified multimodal context** aligned along the video timeline.
+The `OmniFusionModel` projects all modalities into a shared token space and produces a **unified multimodal context** aligned along the video timeline.
 
 ### 3. Trailer Omni Model (LLM Thinker)
-A reasoning module performs **event detection, scene understanding, emotion
-analysis, story modeling, and cross-modal reasoning**, then a **Highlight Segment
-Selector** acts as the policy that predicts the highlight **start/end
-timestamps**.
+A reasoning module performs **event detection, scene understanding, emotion analysis, story modeling, and cross-modal reasoning**, then a **Highlight Segment Selector** acts as the policy that predicts the highlight **start/end timestamps**.
 
 ### 4. Video cutting
-`video_cut/` proposes candidate segments, refines boundaries, and exports the
-final clip with ffmpeg/moviepy.
+`video_cut/` proposes candidate segments, refines boundaries, and exports the final clip with ffmpeg/moviepy.
 
 ### 5. Reward model
-A large VLM/omni model scores each candidate clip on six axes (excitement,
-emotional impact, story completeness, relevance, AV alignment, trailer quality)
-and returns a scalar reward.
+A large VLM (using API)/omni model scores each candidate clip on six axes (excitement, emotional impact, story completeness, relevance, AV alignment, trailer quality) and returns a scalar reward.
 
 ### 6. RL training loop
-The policy is optimized with **PPO / GRPO** (DPO-style preference training is
-also supported) using the reward model's score as the training signal — no
-ground-truth highlight labels required.
+The policy is optimized with **PPO / GRPO** (DPO-style preference training is also supported) using the reward model's score as the training signal — no ground-truth highlight labels required.
 
 ---
 
@@ -136,8 +121,7 @@ Omni_Trailer_Pick_the_Video_Highlight/
 
 ## Installation
 
-Inference and RL training run the Qwen2.5-Omni backbone and need a GPU
-(A100/H100 recommended).
+Inference and RL training run the Qwen2.5-Omni backbone and need a GPU (A100/H100 recommended).
 
 ```bash
 git clone https://github.com/geoz-lab/Omni_Trailer_Pick_the_Video_Highlight.git
@@ -155,9 +139,7 @@ conda activate omni_trailer
 ### Environment setup on an old-GLIBC HPC cluster (verified: Sherlock / CentOS 7, GLIBC 2.17)
 
 `conda env create -f environment.yml` and a plain `pip install -r requirements.txt`
-**do not work** there, because the system GCC (4.8.5) can't build native packages
-and conda's `pytorch-cuda` needs GLIBC ≥ 2.27. Run these from a **login node**
-(it has internet; compute nodes don't), in order:
+**do not work** there, because the system GCC (4.8.5) can't build native packages and conda's `pytorch-cuda` needs GLIBC ≥ 2.27. Run these from a **login node** (it has internet; compute nodes don't), in order:
 
 ```bash
 # 1. base env
@@ -196,13 +178,9 @@ export TOKENIZERS_PARALLELISM=false
 ```
 
 Notes:
-- `configs/model.yaml` uses `attn_implementation: sdpa` so **no flash-attn build is
-  required**. flash-attn is faster and lower-memory if you can build it.
-- The code handles two cluster-specific quirks automatically: it loads Qwen2.5-Omni
-  text-only and neutralizes the `torch.load` guard for the trusted speaker file
-  (see the note below), since torch ≥ 2.6 isn't installable on GLIBC 2.17.
-- See [`docs/sherlock.md`](docs/sherlock.md) for Slurm jobs, the demo-video copy,
-  and the reward-API egress caveat.
+- `configs/model.yaml` uses `attn_implementation: sdpa` so **no flash-attn build is required**. flash-attn is faster and lower-memory if you can build it.
+- The code handles two cluster-specific quirks automatically: it loads Qwen2.5-Omni text-only and neutralizes the `torch.load` guard for the trusted speaker file (see the note below), since torch ≥ 2.6 isn't installable on GLIBC 2.17.
+- See [`docs/sherlock.md`](docs/sherlock.md) for Slurm jobs, the demo-video copy, and the reward-API egress caveat.
 
 The reward judge calls an external VLM API. Put your key in a `.env` file
 (gitignored; auto-loaded by the scripts) — or just `export` it:
@@ -251,24 +229,13 @@ Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch),
 
 ## Cluster note: torch < 2.6 + the speaker file
 
-On GLIBC-2.17 clusters (e.g. Sherlock/CentOS 7) you're pinned to torch 2.5.x —
-newer CUDA wheels need GLIBC ≥ 2.27. Qwen2.5-Omni's `from_pretrained` always
-calls `load_speakers()`, and transformers blocks its `torch.load` on torch < 2.6
-(CVE-2025-32434). `OmniThinker.load()` therefore neutralizes that guard **only**
-for the Qwen module, to load the **official** speaker file (`weights_only`).
-This is a deliberate, scoped exception for a trusted file — don't generalize it
-to untrusted checkpoints. On a GLIBC ≥ 2.27 box, prefer torch ≥ 2.6 and drop the
-patch.
+On GLIBC-2.17 clusters (e.g. Sherlock/CentOS 7) you're pinned to torch 2.5.x — newer CUDA wheels need GLIBC ≥ 2.27. Qwen2.5-Omni's `from_pretrained` always calls `load_speakers()`, and transformers blocks its `torch.load` on torch < 2.6 (CVE-2025-32434). `OmniThinker.load()` therefore neutralizes that guard **only** for the Qwen module, to load the **official** speaker file (`weights_only`).
+
+This is a deliberate, scoped exception for a trusted file — don't generalize it to untrusted checkpoints. On a GLIBC ≥ 2.27 box, prefer torch ≥ 2.6 and drop the patch.
 
 ## Status
 
-The omni inference path (`run_inference.py`), the GRPO training loop
-(`train_rl.py`), the Gemini/OpenAI reward judge, and all video/audio I/O are
-implemented and meant to run on the GPU cluster. They have **not** been executed
-on CPU here. Pin exact `transformers` / SDK versions and the Qwen2.5-Omni model
-id for your environment before a full run. The proposal-stage encoders
-(`src/encoders/`) remain optional stubs (the omni model ingests the full clip
-directly).
+The omni inference path (`run_inference.py`), the GRPO training loop (`train_rl.py`), the Gemini/OpenAI reward judge, and all video/audio I/O are implemented and meant to run on the GPU cluster. They have **not** been executed on CPU here. Pin exact `transformers` / SDK versions and the Qwen2.5-Omni model id for your environment before a full run. The proposal-stage encoders (`src/encoders/`) remain optional stubs (the omni model ingests the full clip directly).
 
 ## License
 
