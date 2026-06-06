@@ -209,6 +209,56 @@ python scripts/train_rl.py --config configs/train_rl.yaml
 python scripts/evaluate_reward.py --clips output
 ```
 
+## Preparing training data
+
+GRPO trains on your own videos — no highlight labels needed (the reward model
+scores the clips). You just need a folder of short `.mp4` files and a manifest.
+
+**Where to put the videos**
+
+- Locally: drop them in [`data/raw_videos/`](data/raw_videos) (gitignored, so they
+  won't be committed).
+- On a cluster: keep large files on `$SCRATCH` and point the manifest at absolute
+  paths (e.g. `$SCRATCH/omni_trailer_data/clip01.mp4`).
+
+**Keep clips short.** Vision attention is O(tokens²), so cost scales with
+`length × resolution`. Aim for **~15 s–2 min** per clip; `configs/model.yaml`
+(`frame_rate`, `video_max_pixels`) further caps tokens. Trim a long file with the
+bundled ffmpeg, e.g. a 30 s cut starting at 1:05:
+
+```bash
+ffmpeg -ss 00:01:05 -i long.mp4 -t 30 -c:v libx264 -c:a aac data/raw_videos/clip01.mp4
+```
+
+**Build the manifest** `data/metadata/train.jsonl` — one JSON object per line
+(`summary` gives the judge full-video context for the relevance axis):
+
+```json
+{"video": "data/raw_videos/clip01.mp4", "summary": "Champions League final, last-minute winner"}
+{"video": "data/raw_videos/clip02.mp4", "summary": "Nadal vs Federer, five-set classic"}
+```
+
+### Where to get free short videos
+
+Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` downloads
+and short clips, free for research use (check each site's license):
+
+| Source | Notes |
+| --- | --- |
+| [Pexels Videos](https://www.pexels.com/videos/) | Large library, free license, no attribution required |
+| [Pixabay Videos](https://pixabay.com/videos/) | Free license, mp4 downloads |
+| [Coverr](https://coverr.co/) | Short cinematic clips, free |
+| [Mixkit](https://mixkit.co/free-stock-video/) | Free stock video, includes sports |
+| [Videvo](https://www.videvo.net/) | Free clips (some need attribution) |
+| [Internet Archive](https://archive.org/details/movies) | Public-domain footage |
+| [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Videos) | Freely licensed videos |
+
+> ⚠️ **Licensing:** real broadcast sports highlights (e.g. actual match footage)
+> are usually **copyrighted** — fine to experiment with on your own machine, but
+> don't commit or redistribute them. For shareable demos, prefer the CC/stock
+> sources above or footage you own. Tools like `yt-dlp` can fetch clips, but only
+> use them on content you have the right to.
+
 ## Configuration
 
 | File                    | Purpose                                              |
