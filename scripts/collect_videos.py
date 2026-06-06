@@ -105,7 +105,11 @@ def pexels_items(queries: list[str], limit: int, max_width: int) -> list[tuple[s
         got = 0
         page = 1
         while got < per_query and len(items) < limit:
-            data = _pexels_page(key, query, page)
+            try:
+                data = _pexels_page(key, query, page)
+            except Exception as exc:  # noqa: BLE001 - skip this query, keep the rest
+                print(f"  query '{query}': stopped at page {page} ({exc})")
+                break
             videos = data.get("videos", [])
             if not videos:
                 break
@@ -135,7 +139,9 @@ def main() -> None:
     man_path = Path(args.manifest); man_path.parent.mkdir(parents=True, exist_ok=True)
 
     if args.source == "pexels":
-        queries = [q.strip() for q in args.query.split(",") if q.strip()]
+        # collapse internal whitespace/newlines so a pasted line-break can't
+        # produce a malformed query (Pexels returns HTTP 400)
+        queries = [" ".join(q.split()) for q in args.query.split(",") if q.strip()]
         items = pexels_items(queries, args.limit, args.max_width)
     else:
         items = [(u, Path(u).stem, s) for u, s in SAMPLE_CLIPS[:args.limit]]
