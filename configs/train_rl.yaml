@@ -24,7 +24,7 @@ optim:
   lr: 5.0e-6
   weight_decay: 0.0
   warmup_steps: 50
-  max_steps: 50                 # first run: bounded. Each step = 1 video x group_size reward calls. Raise to scale up.
+  max_steps: 150               # real run; chain more via --resume. save-every-10 keeps progress on timeout
   grad_accum_steps: 4
   max_grad_norm: 1.0
 
