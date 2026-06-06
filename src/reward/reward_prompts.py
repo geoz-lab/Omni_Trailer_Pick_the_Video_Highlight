@@ -18,20 +18,29 @@ AXES = [
 ]
 
 SYSTEM_PROMPT = (
-    "You are an expert trailer editor and film critic. You evaluate whether a "
-    "short candidate clip works as the single highlight of a longer video. Be "
+    "You are an expert trailer editor. You judge a SHORT highlight clip cut from a "
+    "longer video — the kind of punchy moment that would headline a trailer. The "
+    "clip is short BY DESIGN: never penalize it for being brief or for not covering "
+    "the whole video. Reward it for capturing the single most compelling moment. Be "
     "strict, calibrated, and consistent."
 )
 
-_RUBRIC = """Score the candidate clip on each axis from 0.0 (poor) to 1.0 (excellent):
-- excitement: peak energy / thrill of the moment.
-- emotional_impact: how moving or affecting it is.
-- story_completeness: does it stand alone with a beginning-middle-end?
-- relevance_to_video: how representative it is of the full video below.
-- audiovisual_alignment: do visuals, audio and speech reinforce each other?
-- trailer_quality: would this hook a viewer as a trailer?
+_RUBRIC = """This clip is a short highlight extracted from a longer video. Judge it
+AS A TRAILER MOMENT, not as a summary. Do NOT reward length or completeness of
+coverage — a tight, punchy clip should beat a long, sprawling one.
 
-Full-video summary:
+Score each axis from 0.0 (poor) to 1.0 (excellent):
+- excitement: peak energy / thrill of THIS moment (intensity per second, not total).
+- emotional_impact: how moving or affecting the moment is.
+- story_completeness: does the moment itself land (a clear beat), even if brief?
+  Do not penalize it for omitting the rest of the video.
+- relevance_to_video: does it capture THE most important / defining moment of the
+  video (the thing a viewer must see)? A representative-but-dull clip scores low.
+- audiovisual_alignment: do visuals, audio and crowd/commentary reinforce the peak?
+- trailer_quality: would this hook a viewer in seconds? Concise and high-impact
+  scores high; slow or padded scores low.
+
+Full-video context (for the relevance axis):
 {video_summary}
 
 Respond with ONLY a JSON object, e.g.:

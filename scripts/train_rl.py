@@ -92,7 +92,8 @@ def main() -> None:
         weights=reward_cfg.get("axes", {}),
         cache_dir=(reward_cfg.get("cache", {}) or {}).get("dir"),
         length_penalty=(reward_cfg.get("shaping", {}) or {}).get("length_penalty", 0.05),
-        target_clip_seconds=model_cfg["selector"].get("target_clip_seconds", 45),
+        target_clip_seconds=(reward_cfg.get("shaping", {}) or {}).get(
+            "target_clip_seconds", model_cfg["selector"].get("target_clip_seconds", 45)),
     ))
 
     workdir = Path("data/processed/rollouts"); workdir.mkdir(parents=True, exist_ok=True)

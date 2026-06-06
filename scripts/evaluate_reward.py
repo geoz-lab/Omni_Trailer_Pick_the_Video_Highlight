@@ -50,6 +50,7 @@ def main() -> None:
         weights=cfg.get("axes", {}),
         cache_dir=(cfg.get("cache", {}) or {}).get("dir"),
         length_penalty=(cfg.get("shaping", {}) or {}).get("length_penalty", 0.05),
+        target_clip_seconds=(cfg.get("shaping", {}) or {}).get("target_clip_seconds", 45),
     ))
 
     rows = []

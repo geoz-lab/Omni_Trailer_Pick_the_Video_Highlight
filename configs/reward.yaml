@@ -13,13 +13,15 @@ judge:
   request_timeout_s: 120
 
 # Per-axis scores returned by the judge (each in [0, 1]); reward = weighted sum.
+# Weighted toward punchiness (excitement, trailer_quality) and away from coverage
+# (relevance/story) so the reward favors a good SHORT highlight, not the long clip.
 axes:
-  excitement:          0.20
+  excitement:          0.25
   emotional_impact:    0.20
-  story_completeness:  0.15
-  relevance_to_video:  0.20
-  audiovisual_alignment: 0.10
-  trailer_quality:     0.15
+  story_completeness:  0.10
+  relevance_to_video:  0.05
+  audiovisual_alignment: 0.15
+  trailer_quality:     0.25
 
 # Caching avoids paying for the same clip twice during RL rollouts.
 cache:
@@ -28,5 +30,7 @@ cache:
 
 # Reward shaping
 shaping:
-  length_penalty: 0.05            # penalize clips far from target_clip_seconds
+  target_clip_seconds: 25         # preferred trailer length; deviation is penalized
+  length_penalty: 0.20            # stronger pull toward target: a tight ~25s clip is
+                                  # preferred over a sprawling 45s (or 90s) one
   duplicate_penalty: 0.10         # discourage near-duplicate candidates in a group

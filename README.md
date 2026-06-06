@@ -34,21 +34,41 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 ### Reward-model scores (Gemini 2.5 Pro judge)
 
-How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
+The judge (Gemini 2.5 Pro) scores each candidate clip on six axes (0–1); the
+**reward** is a weighted sum **minus a length penalty** that pulls toward a short
+trailer. Weights favor *punchiness* over *coverage*, so a tight highlight beats the
+long, unedited clip rather than losing to it (see `configs/reward.yaml`).
+
+| Axis | Weight | Rewards |
+| --- | :---: | --- |
+| `excitement` | **0.25** | peak energy / thrill of the moment (intensity per second) |
+| `trailer_quality` | **0.25** | hooks a viewer in seconds; concise, high-impact |
+| `emotional_impact` | 0.20 | how moving or affecting the moment is |
+| `audiovisual_alignment` | 0.15 | visuals + audio/crowd/commentary reinforce the peak |
+| `story_completeness` | 0.10 | the moment lands as a clear beat |
+| `relevance_to_video` | 0.05 | captures *the defining moment* (not "covers everything") |
+
+```
+reward = Σ(weightᵢ · scoreᵢ)  −  0.20 · |duration − 25s| / 25s
+```
+
+The length term strongly favors a ~25 s cut, so long clips are penalized (the full
+90 s video loses ~0.52 here). This is deliberate: it stops the policy from
+reward-hacking by just emitting the longest allowed clip.
 
 **Demo score — Canada vs Ireland soccer friendly (90 s source)**
 
-| Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
+| Clip | Excite | Emotion | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Original full video (90 s) | 0.90 | 0.80 | 0.90 | 1.00 | 0.95 | 0.90 | **0.855** |
-| Picked highlight — pre-GRPO (0–10 s) | 0.30 | 0.10 | 0.10 | 0.40 | 0.70 | 0.10 | **0.221** |
-| Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Original full video (90 s) | 0.80 | 0.60 | 0.90 | 1.00 | 0.90 | 0.40 | **0.175** |
+| Picked highlight — pre-GRPO (0–10 s) | 0.40 | 0.10 | 0.30 | 0.20 | 0.50 | 0.20 | **0.165** |
+| Picked highlight — post-GRPO (~25 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
-> Scored with the Gemini 2.5 Pro judge via
-> `python scripts/evaluate_reward.py --eval-model`. **Before training**, the
-> untrained policy grabbed the first 10 s (pre-kickoff dead time), scoring far
-> *below* the full clip (0.221 vs 0.855) — a large gap for GRPO to close. The
-> **post-GRPO** row gets filled after RL training to show the lift.
+> Under the trailer-focused reward, the **full 90 s video scores low** — it's not a
+> trailer (too long → big length penalty, weak `trailer_quality`). The **pre-GRPO**
+> pick (first 10 s, pre-kickoff dead time) is also weak. Both are ~0.17, so the
+> meaningful target is the **post-GRPO** row: GRPO should produce a ~25 s
+> goal-and-celebration cut that scores well above both. (Filled after training.)
 
 ---
 
