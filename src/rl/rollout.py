@@ -51,7 +51,11 @@ def rollout_group(
             )
             continue
         clip_path = export_clip(sample.video_path, span.start_s, span.end_s, f"{workdir}/cand_{i}.mp4")
-        scored = reward_model.score(clip_path, video_summary, span.duration)
+        try:
+            scored = reward_model.score(clip_path, video_summary, span.duration)
+        except Exception as exc:  # noqa: BLE001 - a transient judge error must not kill training
+            print(f"  [rollout] judge failed for candidate {i}, dropping it: {exc}")
+            continue
         candidates.append(
             Candidate(span, roll["token_ids"], roll["logprobs"], scored["reward"], scored["axes"])
         )

@@ -9,7 +9,7 @@ judge:
   max_video_seconds: 60
   frame_rate: 1                   # frames sampled when the judge can't take native video
   temperature: 0.0
-  max_retries: 4
+  max_retries: 6
   request_timeout_s: 120
 
 # Per-axis scores returned by the judge (each in [0, 1]); reward = weighted sum.

@@ -70,6 +70,9 @@ class GRPOTrainer:
         import torch
 
         cfg = self.config
+        if not group:                       # all candidates failed to score -> nothing to learn
+            return {"loss": 0.0, "kl": 0.0, "reward_mean": 0.0, "reward_max": 0.0,
+                    "malformed_frac": 0.0, "skipped": True}
         advs = group_advantages([c.reward for c in group], cfg.normalize_advantages)
 
         total_loss = 0.0

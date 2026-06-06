@@ -43,4 +43,4 @@ logging:
   project: omni-trailer
   backend: none                 # wandb | none  (wandb needs internet/login; none for first run)
   save_dir: checkpoints/
-  save_every_steps: 25          # save the LoRA adapter every N steps (+ at the end)
+  save_every_steps: 10          # save the LoRA adapter every N steps (+ at the end)
