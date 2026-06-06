@@ -34,23 +34,11 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 ### Reward-model scores (Gemini 2.5 Pro judge)
 
-How the judge rates each clip on the six axes (0–1) and the weighted **reward**.
-A good trailer should beat the full video; the GRPO-trained policy should beat the
-untrained one.
+How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
 
-How the judge rates each clip on the six axes (0–1) and the weighted **reward**.
-A good trailer should beat the full video; the GRPO-trained policy should beat the
-untrained one.
+How the judge rates each clip on the six axes (0–1) and the weighted **reward**. A good trailer should beat the full video; the GRPO-trained policy should beat the untrained one.
 
-**Demo 1 — Ronaldo goal (33 s source)**
-
-| Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Original full video (33 s) | 1.00 | 0.80 | 1.00 | 1.00 | 1.00 | 0.95 | **0.939** |
-| Picked highlight — pre-GRPO (5 s) | 0.90 | 0.80 | 0.90 | 1.00 | 0.90 | 0.95 | **0.863** |
-| Picked highlight — post-GRPO | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-
-**Demo 2 — Canada (longer source)**
+**Demo score — Canada (90s original)**
 
 | Clip | Excitement | Emotional | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
