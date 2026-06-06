@@ -240,8 +240,7 @@ ffmpeg -ss 00:01:05 -i long.mp4 -t 30 -c:v libx264 -c:a aac data/raw_videos/clip
 
 ### Where to get free short videos
 
-Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` downloads
-and short clips, free for research use (check each site's license):
+Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` downloads and short clips, free for research use (check each site's license):
 
 | Source | Notes |
 | --- | --- |
@@ -253,11 +252,7 @@ and short clips, free for research use (check each site's license):
 | [Internet Archive](https://archive.org/details/movies) | Public-domain footage |
 | [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:Videos) | Freely licensed videos |
 
-> ⚠️ **Licensing:** real broadcast sports highlights (e.g. actual match footage)
-> are usually **copyrighted** — fine to experiment with on your own machine, but
-> don't commit or redistribute them. For shareable demos, prefer the CC/stock
-> sources above or footage you own. Tools like `yt-dlp` can fetch clips, but only
-> use them on content you have the right to.
+> ⚠️ **Licensing:** real broadcast sports highlights (e.g. actual match footage) are usually **copyrighted** — fine to experiment with on your own machine, but don't commit or redistribute them. For shareable demos, prefer the CC/stock sources above or footage you own. Tools like `yt-dlp` can fetch clips, but only use them on content you have the right to.
 
 ## Configuration
 
