@@ -164,10 +164,12 @@ def main() -> None:
                 tmp = out_dir / f"{stem}.download.mp4"
                 print(f"downloading {url}")
                 _download(url, tmp)
-                # trim to max_seconds (export_clip just copies if the clip is shorter)
                 dur = probe_duration(str(tmp))
-                export_clip(str(tmp), 0.0, min(dur, args.max_seconds), str(final))
-                tmp.unlink(missing_ok=True)
+                if dur <= args.max_seconds:
+                    tmp.replace(final)          # already short -> no re-encode
+                else:
+                    export_clip(str(tmp), 0.0, args.max_seconds, str(final))
+                    tmp.unlink(missing_ok=True)
                 man.write(json.dumps({"video": rel, "summary": summary}) + "\n")
                 added += 1
                 print(f"  saved {final}  ({min(dur, args.max_seconds):.0f}s)")
