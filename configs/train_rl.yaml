@@ -6,8 +6,8 @@ model_config: configs/model.yaml
 reward_config: configs/reward.yaml
 
 data:
-  train_manifest: data/metadata/train.jsonl
-  val_manifest: data/metadata/val.jsonl
+  train_manifest: data/metadata/train.jsonl   # produced by split_manifest.py
+  val_manifest: data/metadata/test.jsonl      # held-out split for evaluation
   shuffle: true
 
 grpo:
