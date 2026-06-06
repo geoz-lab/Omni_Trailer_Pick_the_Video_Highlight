@@ -10,12 +10,12 @@
 #     proxy (see PROXY note) or host the judge locally (configs/reward.yaml).
 #   - data/metadata/train.jsonl exists (one {"video": ..., "summary": ...} per line).
 #SBATCH -J omni-grpo
-#SBATCH -p gpu
+#SBATCH -p serc
 #SBATCH -G 1                     # one 80GB H100 fits single-model GRPO; use -G 2 for headroom
 #SBATCH -C GPU_MEM:80GB          # device_map=auto shards across both if you request -G 2
 #SBATCH -c 8
 #SBATCH --mem=96G
-#SBATCH -t 48:00:00              # gpu partition caps ~2 days; checkpoint + resume for more
+#SBATCH -t 06:00:00              # 50 steps is ~1-2h; raise if you increase max_steps
 #SBATCH -o logs/train_%j.out
 #SBATCH -e logs/train_%j.err
 
