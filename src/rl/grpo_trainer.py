@@ -43,10 +43,27 @@ class GRPOTrainer:
     def __init__(self, policy, reference, optimizer, config: GRPOConfig | None = None,
                  logger=None) -> None:
         self.policy = policy            # OmniThinker (trainable LoRA)
-        self.reference = reference      # frozen OmniThinker for the KL term
+        # reference for the KL term. If None, we reuse the policy's *base* model
+        # with the LoRA adapter disabled — one model instead of two (~half the
+        # GPU memory). Pass a separate frozen OmniThinker only if you want it.
+        self.reference = reference
         self.optimizer = optimizer
         self.config = config or GRPOConfig()
         self.logger = logger
+
+    def _reference_logprobs(self, inputs: dict, token_ids: list[int]):
+        """Frozen-policy log-probs for the KL term (no grad)."""
+        import torch
+
+        with torch.no_grad():
+            if self.reference is not None:
+                return self.reference.logprobs_of(inputs, token_ids)
+            # reuse the policy base with the adapter turned off
+            if hasattr(self.policy.model, "disable_adapter"):
+                with self.policy.model.disable_adapter():
+                    return self.policy.logprobs_of(inputs, token_ids)
+            # no adapter at all -> reference == policy, KL contributes ~0
+            return self.policy.logprobs_of(inputs, token_ids)
 
     def step(self, inputs: dict, group: list[Candidate]) -> dict:
         """Accumulate the GRPO loss for one group (calls backward). Returns metrics."""
@@ -61,8 +78,7 @@ class GRPOTrainer:
             if not cand.token_ids:
                 continue
             new_logp = self.policy.logprobs_of(inputs, cand.token_ids)          # [T], grad
-            with torch.no_grad():
-                ref_logp = self.reference.logprobs_of(inputs, cand.token_ids)   # [T]
+            ref_logp = self._reference_logprobs(inputs, cand.token_ids).to(new_logp.device)
             old_logp = torch.as_tensor(cand.logprobs, dtype=new_logp.dtype, device=new_logp.device)
 
             ratio = torch.exp(new_logp - old_logp)

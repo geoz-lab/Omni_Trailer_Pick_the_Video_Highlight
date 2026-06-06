@@ -72,11 +72,11 @@ def main() -> None:
     reward_cfg = yaml.safe_load(open(cfg["reward_config"]))
     g = cfg["grpo"]
 
-    # policy (trainable LoRA) + frozen reference
+    # policy (trainable LoRA). The KL reference reuses the policy base with the
+    # LoRA adapter disabled (reference=None) -> one 7B model, not two. Set a
+    # separate frozen thinker here only if you have spare GPU memory.
     policy = build_thinker(model_cfg, cfg.get("peft"))
-    reference = build_thinker(model_cfg, None)
-    for p in reference.model.parameters():
-        p.requires_grad_(False)
+    reference = None
 
     selector = TrailerSelector(
         policy,

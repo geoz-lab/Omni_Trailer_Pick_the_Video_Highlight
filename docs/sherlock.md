@@ -115,12 +115,26 @@ training stalls on the first reward call. Options:
 W&B logging also needs internet — start with `logging.backend: none` in
 `configs/train_rl.yaml`, switch to `wandb` once egress works.
 
-### Memory
+### Memory (GRPO)
 
-`train_rl.py` loads a **second full 7B model as the frozen reference**
-(policy + reference ≈ 32 GB before activations) → an 80 GB GPU is recommended.
-To fit a 40 GB GPU, drop the second copy and use PEFT's adapter-disable for the
-reference instead (ask if you want this wired in).
+`train_rl.py` trains **one** 7B model: the KL reference reuses the policy base
+with the LoRA adapter disabled (no second copy), so it fits a single **80 GB**
+H100 with the default token caps (`frame_rate: 1`, `video_max_pixels` in
+`configs/model.yaml`).
+
+If you still OOM (longer clips, bigger `group_size`):
+
+- Lower `frame_rate` / `video_max_pixels` further.
+- Reduce `grpo.group_size`.
+- **Use two GPUs** — request `-G 2` (e.g. `-C GPU_SKU:H100_SXM5`); the model loads
+  with `device_map="auto"`, which automatically shards the one model across both
+  cards. No code change needed:
+
+  ```bash
+  srun --ntasks=1 -G 2 --constraint="GPU_SKU:H100_SXM5" \
+       --cpus-per-task=16 --mem-per-cpu=8g --time=8:00:00 --partition=serc --pty bash
+  # or in slurm/train.sbatch: #SBATCH -G 2
+  ```
 
 ## 5. Common pitfalls
 

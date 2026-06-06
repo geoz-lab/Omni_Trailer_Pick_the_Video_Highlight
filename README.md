@@ -214,6 +214,20 @@ python scripts/evaluate_reward.py --clips output
 GRPO trains on your own videos — no highlight labels needed (the reward model
 scores the clips). You just need a folder of short `.mp4` files and a manifest.
 
+**Quickest path — `scripts/collect_videos.py`** downloads short clips, trims them,
+and appends the manifest for you:
+
+```bash
+# zero-config: a few CC sample clips (good for a smoke test)
+python scripts/collect_videos.py --source samples --limit 4 --max-seconds 30
+
+# real/topical content via Pexels (free key in .env as PEXELS_API_KEY)
+python scripts/collect_videos.py --source pexels --query "soccer goal" --limit 20 --max-seconds 45
+```
+
+Both write into `data/raw_videos/` and append `data/metadata/train.jsonl`. Or do
+it by hand:
+
 **Where to put the videos**
 
 - Locally: drop them in [`data/raw_videos/`](data/raw_videos) (gitignored, so they
