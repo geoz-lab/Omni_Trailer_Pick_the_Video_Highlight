@@ -30,3 +30,6 @@ wandb/
 
 # macOS
 .DS_Store
+
+# Local working notes (not for the repo)
+claude_summary.md
