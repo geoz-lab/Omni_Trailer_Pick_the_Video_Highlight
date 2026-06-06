@@ -19,8 +19,8 @@ axes:
   excitement:          0.25
   emotional_impact:    0.20
   story_completeness:  0.10
-  relevance_to_video:  0.05
-  audiovisual_alignment: 0.15
+  relevance_to_video:  0.08
+  audiovisual_alignment: 0.12
   trailer_quality:     0.25
 
 # Caching avoids paying for the same clip twice during RL rollouts.
@@ -30,7 +30,7 @@ cache:
 
 # Reward shaping
 shaping:
-  target_clip_seconds: 25         # preferred trailer length; deviation is penalized
-  length_penalty: 0.20            # stronger pull toward target: a tight ~25s clip is
+  target_clip_seconds: 15         # preferred trailer length; deviation is penalized
+  length_penalty: 0.20            # stronger pull toward target: a tight ~15s clip is
                                   # preferred over a sprawling 45s (or 90s) one
   duplicate_penalty: 0.10         # discourage near-duplicate candidates in a group

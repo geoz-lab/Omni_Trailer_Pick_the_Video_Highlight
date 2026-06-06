@@ -44,31 +44,32 @@ long, unedited clip rather than losing to it (see `configs/reward.yaml`).
 | `excitement` | **0.25** | peak energy / thrill of the moment (intensity per second) |
 | `trailer_quality` | **0.25** | hooks a viewer in seconds; concise, high-impact |
 | `emotional_impact` | 0.20 | how moving or affecting the moment is |
-| `audiovisual_alignment` | 0.15 | visuals + audio/crowd/commentary reinforce the peak |
+| `audiovisual_alignment` | 0.12 | visuals + audio/crowd/commentary reinforce the peak |
 | `story_completeness` | 0.10 | the moment lands as a clear beat |
-| `relevance_to_video` | 0.05 | captures *the defining moment* (not "covers everything") |
+| `relevance_to_video` | 0.08 | captures *the defining moment* (not "covers everything") |
 
 ```
-reward = Σ(weightᵢ · scoreᵢ)  −  0.20 · |duration − 25s| / 25s
+reward = Σ(weightᵢ · scoreᵢ)  −  0.20 · |duration − 15s| / 15s
 ```
 
-The length term strongly favors a ~25 s cut, so long clips are penalized (the full
-90 s video loses ~0.52 here). This is deliberate: it stops the policy from
-reward-hacking by just emitting the longest allowed clip.
+The length term strongly favors a ~15 s cut, so long clips are heavily penalized
+(the full 90 s video loses ~1.0 here, going negative). This is deliberate: it stops
+the policy from reward-hacking by just emitting the longest allowed clip.
 
 **Demo score — Canada vs Ireland soccer friendly (90 s source)**
 
 | Clip | Excite | Emotion | Story | Relevance | AV align | Trailer | **Reward** |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Original full video (90 s) | 0.85 | 0.60 | 1.00 | 1.00 | 0.95 | 0.45 | **0.218** |
-| Picked highlight — pre-GRPO (0–10 s) | 0.20 | 0.10 | 0.20 | 0.10 | 0.40 | 0.10 | **0.060** |
-| Picked highlight — post-GRPO (~25 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Original full video (90 s) | 0.85 | 0.60 | 1.00 | 1.00 | 0.95 | 0.45 | **−0.261** |
+| Picked highlight — pre-GRPO (0–10 s) | 0.20 | 0.10 | 0.20 | 0.10 | 0.40 | 0.10 | **0.104** |
+| Picked highlight — post-GRPO (~15 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
-> Under the trailer-focused reward, the **full 90 s video scores low** (**0.218**) —
-> it's not a trailer (too long → ~0.52 length penalty, weak `trailer_quality`). The
-> **pre-GRPO** pick (first 10 s, pre-kickoff dead time) is weaker still (**0.060**).
-> So the meaningful target is the **post-GRPO** row: GRPO should produce a ~25 s
-> goal-and-celebration cut that scores well above both. (Filled after training.)
+> With a 15 s target, the **full 90 s video goes negative** (**−0.261**) — far too
+> long to be a trailer (length penalty ≈ 1.0). The **pre-GRPO** pick is short but
+> weak content (**0.104**); it only "wins" here on length, not quality. So the
+> meaningful target is the **post-GRPO** row: GRPO should produce a tight ~15 s
+> goal-and-celebration cut with high excitement/trailer scores, landing well above
+> 0.1. (Filled after training.)
 
 | Original (full 90 s) | Picked highlight — pre-GRPO (10 s) |
 | :---: | :---: |
