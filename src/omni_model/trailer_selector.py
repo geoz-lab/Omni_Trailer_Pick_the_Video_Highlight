@@ -18,10 +18,13 @@ from .fusion_model import FusionInputs
 from .llm_thinker import OmniThinker
 
 _SELECTOR_PROMPT = (
-    "You are choosing the single best highlight clip for a trailer. "
-    "Consider emotion, story, excitement and audio-visual peaks. "
-    "Respond ONLY with the boundaries in the form "
-    "<start>MM:SS</start><end>MM:SS</end>."
+    "You are an expert trailer editor. From this video, pick the single best "
+    "~15-second highlight for a trailer — the most exciting, emotional, "
+    "trailer-worthy moment.\n\n"
+    "Output ONLY the start and end timestamps, in EXACTLY this format, and "
+    "nothing else (no words, no explanation):\n"
+    "<start>MM:SS</start><end>MM:SS</end>\n\n"
+    "Example: <start>00:42</start><end>00:57</end>"
 )
 
 _BOUNDARY_RE = re.compile(r"<start>(\d+:\d+)</start>\s*<end>(\d+:\d+)</end>")

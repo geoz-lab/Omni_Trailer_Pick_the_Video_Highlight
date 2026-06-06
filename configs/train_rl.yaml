@@ -21,7 +21,7 @@ grpo:
     max_new_tokens: 64          # enough for the <start>/<end> timestamp tokens
 
 optim:
-  lr: 1.0e-6
+  lr: 5.0e-6
   weight_decay: 0.0
   warmup_steps: 50
   max_steps: 50                 # first run: bounded. Each step = 1 video x group_size reward calls. Raise to scale up.
