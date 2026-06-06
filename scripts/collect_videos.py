@@ -55,7 +55,8 @@ SAMPLE_CLIPS = [
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--source", choices=["pexels", "samples"], default="samples")
-    p.add_argument("--query", default="sports highlights", help="Pexels search query")
+    p.add_argument("--query", default="sports highlights",
+                   help="Pexels query; comma-separate several to mix topics, e.g. 'soccer,basketball,surfing'")
     p.add_argument("--limit", type=int, default=5, help="max number of videos to fetch")
     p.add_argument("--max-seconds", type=float, default=60.0, help="trim each clip to this length")
     p.add_argument("--out", default="data/raw_videos")
@@ -71,32 +72,61 @@ def _download(url: str, dest: Path) -> None:
             f.write(chunk)
 
 
-def pexels_items(query: str, limit: int, max_width: int) -> list[tuple[str, str, str]]:
-    """Return [(download_url, filename_stem, summary)] from the Pexels API."""
+def _pexels_page(key: str, query: str, page: int, per_page: int = 80) -> dict:
+    url = (f"https://api.pexels.com/videos/search?query={urllib.parse.quote(query)}"
+           f"&per_page={per_page}&page={page}&size=medium")
+    req = urllib.request.Request(url, headers={"Authorization": key, **_UA})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.load(r)
+
+
+def _pick_mp4(video: dict, max_width: int) -> str | None:
+    mp4s = [f for f in video.get("video_files", []) if f.get("file_type") == "video/mp4"]
+    if not mp4s:
+        return None
+    ok = [f for f in mp4s if (f.get("width") or 0) <= max_width]
+    return max(ok or mp4s, key=lambda f: f.get("width") or 0)["link"]
+
+
+def pexels_items(queries: list[str], limit: int, max_width: int) -> list[tuple[str, str, str]]:
+    """Return up to `limit` (url, stem, summary) across one or more queries.
+
+    Paginates the Pexels API (80/page) and spreads the budget over the queries so
+    you can reach hundreds/thousands of clips. Dedupes by video id.
+    """
     key = os.environ.get("PEXELS_API_KEY")
     if not key:
         raise RuntimeError("Set PEXELS_API_KEY (in .env) for --source pexels. "
                            "Get a free key at https://www.pexels.com/api/")
-    per_page = min(max(limit, 1), 80)
-    url = (f"https://api.pexels.com/videos/search?query={urllib.parse.quote(query)}"
-           f"&per_page={per_page}&size=medium")
-    req = urllib.request.Request(url, headers={"Authorization": key, **_UA})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        data = json.load(r)
-
+    per_query = max(1, -(-limit // len(queries)))   # ceil
     items: list[tuple[str, str, str]] = []
-    for v in data.get("videos", []):
-        # pick the largest mp4 file no wider than max_width (fallback: smallest)
-        mp4s = [f for f in v.get("video_files", []) if f.get("file_type") == "video/mp4"]
-        if not mp4s:
-            continue
-        ok = [f for f in mp4s if (f.get("width") or 0) <= max_width]
-        chosen = max(ok or mp4s, key=lambda f: f.get("width") or 0)
-        summary = f"{query} (Pexels stock video by {v.get('user', {}).get('name', 'unknown')})"
-        items.append((chosen["link"], f"pexels_{v['id']}", summary))
-        if len(items) >= limit:
-            break
-    return items
+    seen: set[int] = set()
+    for query in queries:
+        got = 0
+        page = 1
+        while got < per_query and len(items) < limit:
+            data = _pexels_page(key, query, page)
+            videos = data.get("videos", [])
+            if not videos:
+                break
+            for v in videos:
+                vid = v["id"]
+                if vid in seen:
+                    continue
+                link = _pick_mp4(v, max_width)
+                if not link:
+                    continue
+                summary = f"{query} (Pexels stock video by {v.get('user', {}).get('name', 'unknown')})"
+                items.append((link, f"pexels_{vid}", summary))
+                seen.add(vid)
+                got += 1
+                if got >= per_query or len(items) >= limit:
+                    break
+            page += 1
+            if page > (data.get("total_results", 0) // 80) + 1:
+                break   # no more results for this query
+        print(f"  query '{query}': collected {got}")
+    return items[:limit]
 
 
 def main() -> None:
@@ -105,7 +135,8 @@ def main() -> None:
     man_path = Path(args.manifest); man_path.parent.mkdir(parents=True, exist_ok=True)
 
     if args.source == "pexels":
-        items = pexels_items(args.query, args.limit, args.max_width)
+        queries = [q.strip() for q in args.query.split(",") if q.strip()]
+        items = pexels_items(queries, args.limit, args.max_width)
     else:
         items = [(u, Path(u).stem, s) for u, s in SAMPLE_CLIPS[:args.limit]]
 
