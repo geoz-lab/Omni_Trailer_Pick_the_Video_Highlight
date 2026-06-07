@@ -79,6 +79,39 @@ the policy from reward-hacking by just emitting the longest allowed clip.
 
 ---
 
+## Results — GRPO on the held-out test set
+
+Average **Gemini 2.5 Pro reward** over the held-out test split (clips the policy
+never trained on). Each row picks one highlight per test video, scores it, and
+averages — so it measures generalization, not memorization.
+
+| Policy | Test mean reward ↑ | Malformed rate ↓ | Mean clip (s) |
+| --- | :---: | :---: | :---: |
+| Base Qwen2.5-Omni (no GRPO) | _TBD_ | _TBD_ | _TBD_ |
+| + GRPO 50 steps | _TBD_ | _TBD_ | _TBD_ |
+| + GRPO 100 steps | _TBD_ | _TBD_ | _TBD_ |
+
+Reproduce (each line evaluates the test set and appends `eval_results.jsonl`):
+
+```bash
+# 0. baseline: original model, no adapter
+python scripts/evaluate_testset.py --eval-model --tag base
+# 1. train 50 steps, keep that adapter, evaluate
+sbatch --export=ALL,MAX_STEPS=50 slurm/train.sbatch        # -> checkpoints/adapter_final
+cp -r checkpoints/adapter_final checkpoints/adapter_50
+python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_50 --tag grpo50
+# 2. continue +50 (resume) -> 100 total, evaluate
+sbatch --export=ALL,MAX_STEPS=50,RESUME=checkpoints/adapter_50 slurm/train.sbatch
+cp -r checkpoints/adapter_final checkpoints/adapter_100
+python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_100 --tag grpo100
+```
+
+> Tip: add `--limit 30` to evaluate a subset first (faster, fewer API calls).
+> `mean_reward` counts a malformed pick as the −1.0 penalty, so it captures both
+> highlight quality and format reliability in one number.
+
+---
+
 ## Goal
 
 We want automatically pick the most touching, exciting, or representative highlight section from a video, using audio, visual frames, and captions **together**.
