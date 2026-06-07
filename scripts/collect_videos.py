@@ -29,6 +29,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
+from src.utils.audio_utils import has_audio        # noqa: E402
 from src.utils.env import load_env_file          # noqa: E402
 from src.utils.video_utils import probe_duration  # noqa: E402
 from src.video_cut.video_exporter import export_clip  # noqa: E402
@@ -62,6 +63,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out", default="data/raw_videos")
     p.add_argument("--manifest", default="data/metadata/train.jsonl")
     p.add_argument("--max-width", type=int, default=1280, help="prefer Pexels files up to this width")
+    p.add_argument("--require-audio", action="store_true",
+                   help="only keep clips that have an audio track (most Pexels stock is silent)")
     return p.parse_args()
 
 
@@ -182,6 +185,10 @@ def main() -> None:
                 tmp = out_dir / f"{stem}.download.mp4"
                 print(f"downloading {url}")
                 _download(url, tmp)
+                if args.require_audio and not has_audio(str(tmp)):
+                    print("  no audio track -> skip")
+                    tmp.unlink(missing_ok=True)
+                    continue
                 dur = probe_duration(str(tmp))
                 if dur <= args.max_seconds:
                     tmp.replace(final)          # already short -> no re-encode
