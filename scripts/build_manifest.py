@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -44,11 +45,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--clips-dir", default=None, help="where to write segmented clips (default: <videos-dir>/clips)")
     p.add_argument("--copy", action="store_true",
                    help="stream-copy when cutting (fast; keyframe-aligned) — use for bulk segmenting")
+    p.add_argument("--sample-per-video", type=int, default=0,
+                   help="randomly keep only N segments per video (0 = all) — e.g. 3 random 90s windows per game")
+    p.add_argument("--seed", type=int, default=42)
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    random.seed(args.seed)
     root = Path(args.videos_dir)
     vids = sorted(p for p in root.rglob("*") if p.suffix.lower() in VIDEO_EXTS and ".clips" not in p.parts)
     if not vids:
@@ -72,7 +77,10 @@ def main() -> None:
             if args.segment and dur > args.segment:
                 clips_dir.mkdir(parents=True, exist_ok=True)
                 n = int(dur // args.segment)
-                for i in range(n):
+                idxs = list(range(n))
+                if args.sample_per_video and args.sample_per_video < n:
+                    idxs = sorted(random.sample(idxs, args.sample_per_video))
+                for i in idxs:
                     start = i * args.segment
                     dst = clips_dir / f"{v.stem}_{i:03d}.mp4"
                     export_clip(str(v), start, start + args.segment, str(dst), reencode=not args.copy)
