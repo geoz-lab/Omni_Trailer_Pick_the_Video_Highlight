@@ -21,11 +21,11 @@ grpo:
     max_new_tokens: 64          # enough for the <start>/<end> timestamp tokens
 
 optim:
-  lr: 5.0e-6
+  lr: 1.0e-5                   # 1e-6 gave kl~0 (no learning); 1e-5 moves the policy decisively
   weight_decay: 0.0
-  warmup_steps: 50
-  max_steps: 150               # real run; chain more via --resume. save-every-10 keeps progress on timeout
-  grad_accum_steps: 4
+  warmup_steps: 50            # (note: constant lr; warmup not yet scheduled)
+  max_steps: 300              # long run; do in 150-step chunks via MAX_STEPS + RESUME if walltime caps
+  grad_accum_steps: 2         # 300/2 = 150 optimizer updates
   max_grad_norm: 1.0
 
 peft:
@@ -43,4 +43,4 @@ logging:
   project: omni-trailer
   backend: none                 # wandb | none  (wandb needs internet/login; none for first run)
   save_dir: checkpoints/
-  save_every_steps: 10          # save the LoRA adapter every N steps (+ at the end)
+  save_every_steps: 20          # save the LoRA adapter every N steps (+ at the end)

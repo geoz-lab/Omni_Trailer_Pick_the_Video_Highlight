@@ -88,22 +88,22 @@ averages — so it measures generalization, not memorization.
 | Policy | Test mean reward ↑ | Malformed rate ↓ | Mean clip (s) |
 | --- | :---: | :---: | :---: |
 | Base Qwen2.5-Omni (no GRPO) | _TBD_ | _TBD_ | _TBD_ |
-| + GRPO 50 steps | _TBD_ | _TBD_ | _TBD_ |
-| + GRPO 100 steps | _TBD_ | _TBD_ | _TBD_ |
+| + GRPO 150 steps | _TBD_ | _TBD_ | _TBD_ |
+| + GRPO 300 steps | _TBD_ | _TBD_ | _TBD_ |
 
 Reproduce (each line evaluates the test set and appends `eval_results.jsonl`):
 
 ```bash
 # 0. baseline: original model, no adapter
 python scripts/evaluate_testset.py --eval-model --tag base
-# 1. train 50 steps, keep that adapter, evaluate
-sbatch --export=ALL,MAX_STEPS=50 slurm/train.sbatch        # -> checkpoints/adapter_final
-cp -r checkpoints/adapter_final checkpoints/adapter_50
-python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_50 --tag grpo50
-# 2. continue +50 (resume) -> 100 total, evaluate
-sbatch --export=ALL,MAX_STEPS=50,RESUME=checkpoints/adapter_50 slurm/train.sbatch
-cp -r checkpoints/adapter_final checkpoints/adapter_100
-python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_100 --tag grpo100
+# 1. train 150 steps, keep that adapter, evaluate
+sbatch --export=ALL,MAX_STEPS=150 slurm/train.sbatch       # -> checkpoints/adapter_final
+cp -r checkpoints/adapter_final checkpoints/adapter_150
+python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_150 --tag grpo150
+# 2. continue +150 (resume) -> 300 total, evaluate
+sbatch --export=ALL,MAX_STEPS=150,RESUME=checkpoints/adapter_150 slurm/train.sbatch
+cp -r checkpoints/adapter_final checkpoints/adapter_300
+python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_300 --tag grpo300
 ```
 
 > Tip: add `--limit 30` to evaluate a subset first (faster, fewer API calls).
