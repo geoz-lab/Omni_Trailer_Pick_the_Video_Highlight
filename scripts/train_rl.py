@@ -125,9 +125,11 @@ def main() -> None:
 
     # policy (trainable LoRA). The KL reference reuses the policy base with the
     # LoRA adapter disabled (reference=None) -> one 7B model, not two.
-    # Under DDP each rank holds one full replica on its own GPU ({"": local_rank});
-    # single-GPU uses device_map="auto".
-    device_map = {"": local_rank} if world_size > 1 else "auto"
+    # Under DDP each rank holds one full replica on its own GPU ({"": local_rank}).
+    # Single-process uses "balanced" so a model that *fits* one GPU is still SPREAD
+    # across all visible GPUs (model-parallel) — "auto" would pack it onto GPU 0 and
+    # leave the rest idle, then OOM on activations. With 1 GPU, "balanced" == that GPU.
+    device_map = {"": local_rank} if world_size > 1 else "balanced"
     policy = build_thinker(model_cfg, cfg.get("peft"), resume=args.resume, device_map=device_map)
     reference = None
 
