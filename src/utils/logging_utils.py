@@ -13,6 +13,7 @@ def get_logger(name: str = "omni_trailer", level: int = logging.INFO) -> logging
         handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
         logger.addHandler(handler)
         logger.setLevel(level)
+        logger.propagate = False    # avoid duplicate lines via the root logger
     return logger
 
 
