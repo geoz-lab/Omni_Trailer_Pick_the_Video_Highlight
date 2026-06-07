@@ -28,4 +28,4 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export TOKENIZERS_PARALLELISM=false
 
 nvidia-smi
-python scripts/run_inference.py --video "$VIDEO" --output output
+"$CONDA_PREFIX/bin/python" scripts/run_inference.py --video "$VIDEO" --output output

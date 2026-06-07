@@ -43,5 +43,5 @@ nvidia-smi
 # chunked training: set RESUME to continue from an adapter, MAX_STEPS to bound a chunk, e.g.
 #   sbatch --export=ALL,MAX_STEPS=50 slurm/train.sbatch
 #   sbatch --export=ALL,MAX_STEPS=50,RESUME=checkpoints/adapter_50 slurm/train.sbatch
-python scripts/train_rl.py --config configs/train_rl.yaml \
+"$CONDA_PREFIX/bin/python" scripts/train_rl.py --config configs/train_rl.yaml \
     ${RESUME:+--resume "$RESUME"} ${MAX_STEPS:+--max-steps "$MAX_STEPS"}

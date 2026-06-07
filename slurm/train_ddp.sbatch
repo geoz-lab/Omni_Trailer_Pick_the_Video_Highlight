@@ -30,6 +30,7 @@ export TOKENIZERS_PARALLELISM=false
 # GEMINI_API_KEY auto-loads from .env (each rank calls the judge for its own clips)
 
 nvidia-smi
-torchrun --standalone --nproc_per_node="$NGPU" scripts/train_rl.py \
-    --config configs/train_rl.yaml \
+# use the env's python explicitly ($CONDA_PREFIX is reliable even if PATH isn't)
+"$CONDA_PREFIX/bin/python" -m torch.distributed.run --standalone --nproc_per_node="$NGPU" \
+    scripts/train_rl.py --config configs/train_rl.yaml \
     ${RESUME:+--resume "$RESUME"} ${MAX_STEPS:+--max-steps "$MAX_STEPS"}
