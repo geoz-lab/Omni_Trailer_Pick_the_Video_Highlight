@@ -55,3 +55,27 @@ before online GRPO to speed convergence and reduce early API spend.
 `utils/logging_utils.py` logs to console and optionally W&B
 (`logging.backend: wandb`). Track: mean reward, per-axis means, KL to reference,
 fraction of malformed completions, mean clip duration.
+
+## Multi-GPU (data-parallel GRPO)
+
+`train_rl.py` supports data parallelism via `torchrun` — each GPU holds one full
+7B replica, trains on a **different shard** of the manifest, and gradients are
+**averaged across ranks** (manual all-reduce; not `nn.DistributedDataParallel`,
+which doesn't play well with `generate()` + multiple backwards). This gives ~Nx
+throughput for the rollout-bound loop.
+
+```bash
+# N GPUs on one node (each needs ~one 40-80GB card for a full replica)
+torchrun --standalone --nproc_per_node=4 scripts/train_rl.py --config configs/train_rl.yaml
+# or via Slurm:
+sbatch slurm/train_ddp.sbatch        # set #SBATCH -G N and NGPU=N to match
+```
+
+Notes:
+- `--max-steps` is **per rank**; total videos seen ≈ `max_steps × N`. The loop runs
+  a fixed step count (cycling the shard) so all ranks stay in lockstep for the
+  all-reduce.
+- Rank 0 alone logs (`checkpoints/metrics.jsonl`) and saves adapters.
+- LoRA weights are broadcast from rank 0 at startup so all ranks begin identical.
+- Each rank calls the Gemini judge for its own clips, so API traffic scales with N
+  (the retry/backoff + skip-on-failure keep it robust).

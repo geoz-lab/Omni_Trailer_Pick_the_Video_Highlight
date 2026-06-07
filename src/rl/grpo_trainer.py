@@ -41,7 +41,7 @@ class GRPOTrainer:
     """Optimizes the omni policy (LoRA) from groups of scored candidates."""
 
     def __init__(self, policy, reference, optimizer, config: GRPOConfig | None = None,
-                 logger=None) -> None:
+                 logger=None, is_main: bool = True, world_size: int = 1) -> None:
         self.policy = policy            # OmniThinker (trainable LoRA)
         # reference for the KL term. If None, we reuse the policy's *base* model
         # with the LoRA adapter disabled — one model instead of two (~half the
@@ -50,6 +50,21 @@ class GRPOTrainer:
         self.optimizer = optimizer
         self.config = config or GRPOConfig()
         self.logger = logger
+        self.is_main = is_main          # only rank 0 logs / saves
+        self.world_size = world_size    # >1 => data-parallel (manual grad all-reduce)
+
+    def _sync_grads(self) -> None:
+        """Average trainable-param gradients across ranks (manual data-parallel)."""
+        import torch
+        import torch.distributed as dist
+
+        for p in self.policy.model.parameters():
+            if not p.requires_grad:
+                continue
+            if p.grad is None:                       # keep collectives in lockstep
+                p.grad = torch.zeros_like(p)
+            dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
+            p.grad /= self.world_size
 
     def _reference_logprobs(self, inputs: dict, token_ids: list[int]):
         """Frozen-policy log-probs for the KL term (no grad)."""
@@ -118,32 +133,38 @@ class GRPOTrainer:
     def train(self, samples, rollout_fn, save_dir: str | None = None, save_every: int = 0) -> None:
         """Main loop. ``rollout_fn(sample) -> (inputs, group)`` produces a GRPO group.
 
-        Periodically (and at the end) saves the policy's LoRA adapter to ``save_dir``.
+        Runs exactly ``max_steps`` steps (cycling the data if needed) so all ranks
+        stay in lockstep for the gradient all-reduce. Only rank 0 logs / saves.
         """
         import torch
 
-        self.optimizer.zero_grad()
-        last_step = -1
-        for step, sample in enumerate(samples):
-            if step >= self.config.max_steps:
-                break
-            last_step = step
+        samples = list(samples)
+        if not samples:
+            if self.is_main:
+                print("no training samples")
+            return
+
+        self.optimizer.zero_grad(set_to_none=False)
+        for step in range(self.config.max_steps):
+            sample = samples[step % len(samples)]      # cycle -> fixed step count, lockstep
             inputs, group = rollout_fn(sample)
             metrics = self.step(inputs, group)
 
             if (step + 1) % self.config.grad_accum_steps == 0:
+                if self.world_size > 1:
+                    self._sync_grads()                 # average grads across ranks
                 torch.nn.utils.clip_grad_norm_(
                     (p for p in self.policy.model.parameters() if p.requires_grad),
                     self.config.max_grad_norm,
                 )
                 self.optimizer.step()
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=False)
 
-            if self.logger is not None:
+            if self.logger is not None and self.is_main:
                 self.logger.log_metrics(metrics, step=step)
 
-            if save_dir and save_every and (step + 1) % save_every == 0:
+            if save_dir and self.is_main and save_every and (step + 1) % save_every == 0:
                 self._save(save_dir, step + 1)
 
-        if save_dir and last_step >= 0:
+        if save_dir and self.is_main:
             self._save(save_dir, "final")

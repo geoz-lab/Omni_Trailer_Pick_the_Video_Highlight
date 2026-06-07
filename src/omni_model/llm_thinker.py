@@ -22,7 +22,7 @@ class ThinkerConfig:
     video_max_pixels: int = 200704        # per-frame cap; bounds vision-attention memory
     dtype: str = "bfloat16"
     attn_implementation: str = "flash_attention_2"
-    device_map: str = "auto"
+    device_map: "str | dict" = "auto"   # "auto", or {"": local_rank} for one replica per GPU (DDP)
     use_audio_in_video: bool = True
 
 

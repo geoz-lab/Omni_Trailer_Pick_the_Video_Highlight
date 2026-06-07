@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -38,12 +39,15 @@ def read_manifest(path: str):
                 yield json.loads(line)
 
 
-def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | None = None) -> OmniThinker:
+def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | None = None,
+                  device_map="auto") -> OmniThinker:
     tc = model_cfg["thinker"]
     thinker = OmniThinker(ThinkerConfig(
         backbone=tc["backbone"], frame_rate=tc.get("frame_rate", 2.0),
+        video_max_pixels=tc.get("video_max_pixels", 200704),
         dtype=tc.get("dtype", "bfloat16"),
         attn_implementation=tc.get("attn_implementation", "flash_attention_2"),
+        device_map=device_map,
     )).load()
     if resume:
         # continue training from a saved adapter (chunked training)
@@ -66,16 +70,34 @@ def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | No
     return thinker
 
 
+def setup_distributed():
+    """Return (rank, world_size, local_rank). >1 world_size when launched via torchrun."""
+    import torch
+
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    if world_size > 1:
+        import torch.distributed as dist
+
+        local_rank = int(os.environ["LOCAL_RANK"])
+        torch.cuda.set_device(local_rank)
+        dist.init_process_group(backend="nccl")
+        return dist.get_rank(), world_size, local_rank
+    return 0, 1, 0
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default="configs/train_rl.yaml")
     ap.add_argument("--max-steps", type=int, default=None,
-                    help="override optim.max_steps (e.g. --max-steps 2 for a quick sanity run)")
+                    help="override optim.max_steps (per rank; e.g. --max-steps 2 for a sanity run)")
     ap.add_argument("--resume", default=None,
                     help="continue from a saved adapter dir (e.g. checkpoints/adapter_final) for chunked training")
     args = ap.parse_args()
 
     import torch
+
+    rank, world_size, local_rank = setup_distributed()
+    is_main = rank == 0
 
     cfg = yaml.safe_load(open(args.config))
     if args.max_steps is not None:
@@ -86,10 +108,19 @@ def main() -> None:
     g = cfg["grpo"]
 
     # policy (trainable LoRA). The KL reference reuses the policy base with the
-    # LoRA adapter disabled (reference=None) -> one 7B model, not two. Set a
-    # separate frozen thinker here only if you have spare GPU memory.
-    policy = build_thinker(model_cfg, cfg.get("peft"), resume=args.resume)
+    # LoRA adapter disabled (reference=None) -> one 7B model, not two.
+    # Under DDP each rank holds one full replica on its own GPU ({"": local_rank});
+    # single-GPU uses device_map="auto".
+    device_map = {"": local_rank} if world_size > 1 else "auto"
+    policy = build_thinker(model_cfg, cfg.get("peft"), resume=args.resume, device_map=device_map)
     reference = None
+
+    # make every rank start from identical LoRA weights (random A init differs per rank)
+    if world_size > 1:
+        import torch.distributed as dist
+        for p in policy.model.parameters():
+            if p.requires_grad:
+                dist.broadcast(p.data, src=0)
 
     selector = TrailerSelector(
         policy,
@@ -134,12 +165,12 @@ def main() -> None:
         [p for p in policy.model.parameters() if p.requires_grad],
         lr=optim_cfg["lr"], weight_decay=optim_cfg.get("weight_decay", 0.0),
     )
-    _log_cfg = cfg.get("logging", {})
-    logger = MetricLogger(
-        backend=_log_cfg.get("backend", "none"),
-        project=_log_cfg.get("project", "omni-trailer"),
-        metrics_file=str(Path(_log_cfg.get("save_dir", "checkpoints/")) / "metrics.jsonl"),
-    )
+    log_cfg = cfg.get("logging", {})
+    logger = MetricLogger(                       # only rank 0 logs / writes metrics
+        backend=log_cfg.get("backend", "none"),
+        project=log_cfg.get("project", "omni-trailer"),
+        metrics_file=str(Path(log_cfg.get("save_dir", "checkpoints/")) / "metrics.jsonl"),
+    ) if is_main else None
 
     trainer = GRPOTrainer(policy, reference, optimizer, GRPOConfig(
         group_size=g["group_size"], kl_coeff=g.get("kl_coeff", 0.04),
@@ -148,15 +179,25 @@ def main() -> None:
         lr=optim_cfg["lr"], max_steps=optim_cfg.get("max_steps", 5000),
         grad_accum_steps=optim_cfg.get("grad_accum_steps", 8),
         max_grad_norm=optim_cfg.get("max_grad_norm", 1.0),
-    ), logger=logger)
+    ), logger=logger, is_main=is_main, world_size=world_size)
 
-    log_cfg = cfg.get("logging", {})
-    samples = read_manifest(cfg["data"]["train_manifest"])
+    # shard the manifest across ranks (each rank trains on different videos)
+    samples = list(read_manifest(cfg["data"]["train_manifest"]))
+    if world_size > 1:
+        samples = samples[rank::world_size]
+    if is_main:
+        print(f"world_size={world_size}  shard={len(samples)} videos/rank  "
+              f"max_steps={optim_cfg.get('max_steps')} (per rank)")
     trainer.train(
         samples, rollout_fn,
         save_dir=log_cfg.get("save_dir", "checkpoints/"),
         save_every=log_cfg.get("save_every_steps", 0),
     )
+
+    if world_size > 1:
+        import torch.distributed as dist
+        dist.barrier()
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
