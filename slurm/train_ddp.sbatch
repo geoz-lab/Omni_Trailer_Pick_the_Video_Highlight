@@ -8,6 +8,7 @@
 # card per GPU). Keep it on ONE node (this launcher is single-node, multi-GPU).
 #SBATCH -J omni-grpo-ddp
 #SBATCH -p serc
+#SBATCH -N 1                     # all GPUs on ONE node (torchrun --standalone is single-node)
 #SBATCH -G 4                     # <-- number of GPUs (match NGPU below)
 #SBATCH -C GPU_MEM:80GB
 #SBATCH -c 16
