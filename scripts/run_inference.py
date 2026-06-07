@@ -42,6 +42,8 @@ def parse_args() -> argparse.Namespace:
                    help="override per-frame pixel cap (lower for long videos)")
     p.add_argument("--gif", dest="gif", action="store_true", default=True)
     p.add_argument("--no-gif", dest="gif", action="store_false")
+    p.add_argument("--tag", default=None,
+                   help="label inserted into the output name, e.g. --tag grpo50 -> <stem>_grpo50_highlight.mp4")
     return p.parse_args()
 
 
@@ -50,6 +52,8 @@ def main() -> None:
     cfg = yaml.safe_load(open(args.config))
     tcfg, scfg = cfg["thinker"], cfg["selector"]
     stem = Path(args.video).stem
+    if args.tag:
+        stem = f"{stem}_{args.tag}"
 
     log.info("Loading omni thinker %s ...", tcfg["backbone"])
     thinker = OmniThinker(ThinkerConfig(
