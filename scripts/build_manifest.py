@@ -37,6 +37,9 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--videos-dir", required=True, help="folder of source videos (recursed)")
     p.add_argument("--out", required=True, help="manifest path to write (JSONL)")
+    p.add_argument("--filter", default=None,
+                   help="only include files whose path contains this (case-insensitive), "
+                        "e.g. 'champions-league', 'england_epl', 'arsenal'")
     p.add_argument("--summary", default="", help="summary text stored for every clip (judge relevance context)")
     p.add_argument("--segment", type=int, default=0, help="cut into N-second clips (0 = keep whole video)")
     p.add_argument("--max-seconds", type=float, default=None, help="trim whole videos to this length (whole-video mode)")
@@ -55,10 +58,14 @@ def main() -> None:
     args = parse_args()
     random.seed(args.seed)
     root = Path(args.videos_dir)
-    vids = sorted(p for p in root.rglob("*") if p.suffix.lower() in VIDEO_EXTS and ".clips" not in p.parts)
+    vids = sorted(p for p in root.rglob("*") if p.suffix.lower() in VIDEO_EXTS and "clips" not in p.parts)
+    if args.filter:
+        f = args.filter.lower()
+        vids = [v for v in vids if f in str(v).lower()]
     if not vids:
-        print(f"No videos found under {root}")
+        print(f"No videos found under {root}" + (f" matching '{args.filter}'" if args.filter else ""))
         return
+    print(f"{len(vids)} source video(s)" + (f" matching '{args.filter}'" if args.filter else ""))
     out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
     clips_dir = Path(args.clips_dir) if args.clips_dir else root / "clips"
 

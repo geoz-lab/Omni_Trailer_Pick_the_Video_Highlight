@@ -48,36 +48,21 @@ def main() -> None:
     d = SoccerNetDownloader(LocalDirectory=args.dir)
     files = [f"1_{args.res}.mkv", f"2_{args.res}.mkv"]
 
-    # --list / --filter: pick specific games (e.g. Champions League, a team)
+    # --list / --filter: browse games ALREADY ON DISK (this SoccerNet build has no
+    # getListGames API, and download is split-based). To select a competition/team
+    # for training, filter at manifest time: build_manifest.py --filter "<substr>".
     if args.list or args.filter:
-        games = []
-        for sp in args.split:
-            try:
-                games += d.getListGames(sp)
-            except Exception as exc:  # noqa: BLE001
-                print(f"getListGames({sp}) failed: {exc}")
+        mkvs = sorted(Path(args.dir).rglob("*.mkv"))
+        games = sorted({str(p.parent) for p in mkvs})
         if args.filter:
             f = args.filter.lower()
             games = [g for g in games if f in g.lower()]
-        if args.limit:
-            games = games[: args.limit]
-        print(f"{len(games)} matching game(s):")
+        print(f"{len(games)} game folder(s) on disk" + (f" matching '{args.filter}'" if args.filter else "") + ":")
         for g in games:
             print("  ", g)
-        if args.list:
-            return
-        pw = args.password or os.environ.get("SOCCERNET_PASSWORD")
-        if not pw:
-            sys.exit("Set SOCCERNET_PASSWORD to download (or use --list to just browse).")
-        d.password = pw
-        for g in games:
-            try:
-                d.downloadGame(files=files, game=g)
-            except Exception as exc:  # noqa: BLE001
-                sys.exit(f"per-game download not supported by this SoccerNet version ({exc}).\n"
-                         f"Fall back to a whole split:  python scripts/download_soccernet.py "
-                         f"--dir {args.dir} --split {' '.join(args.split)}  (then delete games you don't want).")
-        print("Done.")
+        print("\nBuild a manifest from a subset with:  "
+              "scripts/build_manifest.py --videos-dir", args.dir,
+              "--filter '<substr>' --segment 90 --require-audio --copy")
         return
 
     # default: download whole split(s)
