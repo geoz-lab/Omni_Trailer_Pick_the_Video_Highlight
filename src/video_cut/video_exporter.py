@@ -21,20 +21,23 @@ def ffmpeg_exe() -> str:
         return "ffmpeg"
 
 
-def export_clip(video_path: str, start_s: float, end_s: float, out_path: str) -> str:
+def export_clip(video_path: str, start_s: float, end_s: float, out_path: str,
+                reencode: bool = True) -> str:
     """Cut ``[start_s, end_s]`` from ``video_path`` into ``out_path``; return it.
 
-    Re-encodes for frame-accurate cuts (stream copy can be off by a GOP). Swap to
-    ``-c copy`` if speed matters more than precision.
+    reencode=True: frame-accurate libx264/aac cut (default, for precise trailers).
+    reencode=False: stream copy (``-c copy``) — much faster, but cuts snap to the
+    nearest keyframe (±a GOP). Use for bulk segmenting long videos (e.g. SoccerNet).
     """
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     duration = max(0.0, end_s - start_s)
+    codec = ["-c:v", "libx264", "-c:a", "aac"] if reencode else ["-c", "copy"]
     cmd = [
         ffmpeg_exe(), "-y",
         "-ss", f"{start_s:.3f}",
         "-i", video_path,
         "-t", f"{duration:.3f}",
-        "-c:v", "libx264", "-c:a", "aac",
+        *codec,
         "-movflags", "+faststart",
         out_path,
     ]

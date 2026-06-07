@@ -42,6 +42,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--min-seconds", type=float, default=3.0, help="skip clips shorter than this")
     p.add_argument("--require-audio", action="store_true", help="skip videos/clips with no audio track")
     p.add_argument("--clips-dir", default=None, help="where to write segmented clips (default: <videos-dir>/clips)")
+    p.add_argument("--copy", action="store_true",
+                   help="stream-copy when cutting (fast; keyframe-aligned) — use for bulk segmenting")
     return p.parse_args()
 
 
@@ -73,7 +75,7 @@ def main() -> None:
                 for i in range(n):
                     start = i * args.segment
                     dst = clips_dir / f"{v.stem}_{i:03d}.mp4"
-                    export_clip(str(v), start, start + args.segment, str(dst))
+                    export_clip(str(v), start, start + args.segment, str(dst), reencode=not args.copy)
                     man.write(json.dumps({"video": str(dst), "summary": args.summary}) + "\n")
                     n_written += 1
             else:
@@ -83,7 +85,7 @@ def main() -> None:
                 if args.max_seconds and dur > args.max_seconds:
                     dst = clips_dir / f"{v.stem}_trim.mp4"
                     clips_dir.mkdir(parents=True, exist_ok=True)
-                    export_clip(str(v), 0.0, args.max_seconds, str(dst))
+                    export_clip(str(v), 0.0, args.max_seconds, str(dst), reencode=not args.copy)
                     man.write(json.dumps({"video": str(dst), "summary": args.summary}) + "\n")
                 else:
                     man.write(json.dumps({"video": str(v), "summary": args.summary}) + "\n")
