@@ -15,6 +15,7 @@ thinker:
   video_max_pixels: 100352             # per-frame cap (~316x316, ~128 vision tokens/frame).
                                         # Vision attention is O(tokens^2); fps x pixels bounds GPU memory.
   audio_sample_rate: 16000
+  use_audio_in_video: true              # set false to save memory if 90s+audio OOMs (loses crowd/commentary signal)
   tasks: [event_detection, scene_understanding, emotion_analysis, story_modeling, cross_modal_reasoning]
   dtype: bfloat16
   # sdpa works everywhere (no build). flash_attention_2 is faster and lower-memory

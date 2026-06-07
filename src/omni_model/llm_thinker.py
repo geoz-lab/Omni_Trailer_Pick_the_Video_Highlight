@@ -108,6 +108,7 @@ class OmniThinker:
                 return_audio=False,
                 do_sample=False,
                 max_new_tokens=max_new_tokens,
+                use_cache=True,
             )
         gen = out[:, inputs["input_ids"].shape[1]:]
         return self.processor.batch_decode(gen, skip_special_tokens=True)[0].strip()
@@ -128,6 +129,7 @@ class OmniThinker:
                 temperature=temperature,
                 top_p=top_p,
                 max_new_tokens=max_new_tokens,
+                use_cache=True,
                 output_scores=True,
                 return_dict_in_generate=True,
             )

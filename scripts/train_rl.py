@@ -47,6 +47,7 @@ def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | No
         video_max_pixels=tc.get("video_max_pixels", 200704),
         dtype=tc.get("dtype", "bfloat16"),
         attn_implementation=tc.get("attn_implementation", "flash_attention_2"),
+        use_audio_in_video=tc.get("use_audio_in_video", True),
         device_map=device_map,
     )).load()
     if resume:
@@ -67,6 +68,18 @@ def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | No
             task_type="CAUSAL_LM",
         ))
         thinker.model.print_trainable_parameters()
+
+    # gradient checkpointing: recompute activations during backward -> big training
+    # memory cut (needed for 90s video + audio on one GPU). enable_input_require_grads
+    # lets grads flow through the frozen base to the LoRA params.
+    m = thinker.model
+    try:
+        m.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+        if hasattr(m, "enable_input_require_grads"):
+            m.enable_input_require_grads()
+        print("[train] gradient checkpointing enabled")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[train] gradient checkpointing not enabled: {exc}")
     return thinker
 
 

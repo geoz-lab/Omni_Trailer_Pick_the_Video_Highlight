@@ -62,6 +62,7 @@ def main() -> None:
         video_max_pixels=args.max_pixels or tcfg.get("video_max_pixels", 200704),
         dtype=tcfg.get("dtype", "bfloat16"),
         attn_implementation=tcfg.get("attn_implementation", "flash_attention_2"),
+        use_audio_in_video=tcfg.get("use_audio_in_video", True),
     )).load(lora_path=args.checkpoint)
 
     selector = TrailerSelector(
