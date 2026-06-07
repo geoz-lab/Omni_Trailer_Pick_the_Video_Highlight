@@ -30,7 +30,7 @@ def main() -> None:
         print("metrics file is empty")
         return
 
-    cols = ["step", "reward_mean", "reward_max", "kl", "malformed_frac"]
+    cols = ["step", "loss", "reward_mean", "reward_max", "kl", "malformed_frac"]
     print("  ".join(f"{c:>13}" for c in cols))
     print("-" * (15 * len(cols)))
     for r in rows:
