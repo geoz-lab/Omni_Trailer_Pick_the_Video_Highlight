@@ -359,6 +359,7 @@ Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` download
 - [`docs/idea.md`](docs/idea.md) — motivation and problem framing
 - [`docs/architecture.md`](docs/architecture.md) — model and data flow
 - [`docs/training.md`](docs/training.md) — RL training recipe
+- [`docs/datasets.md`](docs/datasets.md) — data sources (SoccerNet, Mr.HiSum, TVSum, …) + ingestion
 - [`docs/sherlock.md`](docs/sherlock.md) — running on Stanford's Sherlock cluster (Slurm)
 
 Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch),
