@@ -42,12 +42,29 @@ stock footage was dropped — much of it is silent and off-task. These sources h
    (Optionally use SoccerNet's action-spotting labels to target segments around
    goals/cards instead of uniform 90s cuts — a future enhancement.)
 
-## Mr. HiSum (weak supervision / pretraining)
+## Mr. HiSum (weak supervision / pretraining) + YouTube soccer (interim)
 - Repo: <https://github.com/MRHiSum/MR.HiSum> — provides **most-replayed** highlight
   scores + features for ~31k YouTube videos (frame-level "ground truth" highlights).
-- Get the metadata/scores from the repo; fetch the raw videos by their YouTube IDs
-  with `yt-dlp` into `$SCRATCH/omni_data/mrhisum/`, then `build_manifest.py`.
-- Use the most-replayed peaks as a weak label / auxiliary reward signal.
+  It ships *metadata + labels*, **not the videos** — fetch those by YouTube ID.
+- Soccer subset: filter the Mr.HiSum metadata to its football/soccer category
+  (YouTube-8M labels), save the IDs to a file, then download:
+  ```bash
+  python scripts/download_youtube.py --ids soccer_ids.txt --out $SCRATCH/omni_data/yt_soccer
+  ```
+- **Quick interim (no metadata needed)** — while SoccerNet's NDA clears, grab
+  soccer clips directly by search (we reward with Gemini, so we don't strictly
+  need Mr.HiSum's labels to start training):
+  ```bash
+  pip install yt-dlp
+  python scripts/download_youtube.py --search "soccer goals highlights" --limit 60 \
+      --out $SCRATCH/omni_data/yt_soccer --max-duration 1200
+  python scripts/build_manifest.py --videos-dir $SCRATCH/omni_data/yt_soccer \
+      --out data/metadata/all.jsonl --segment 90 --require-audio \
+      --summary "Soccer highlights (YouTube)"
+  python scripts/split_manifest.py --input data/metadata/all.jsonl --test-frac 0.1
+  ```
+  `yt-dlp` muxes audio in, so these clips have commentary/crowd. Research use only;
+  some IDs may be unavailable; keep videos on `$SCRATCH`, never commit.
 
 ## TVSum & YouTube Highlights (benchmark)
 - **TVSum** (50 videos, 10 categories, importance scores): `ydata-tvsum50`
