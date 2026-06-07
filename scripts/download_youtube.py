@@ -40,16 +40,22 @@ def main() -> None:
         sys.exit("yt-dlp not found — install it first:  pip install yt-dlp")
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
 
-    # point yt-dlp at the bundled ffmpeg (for muxing video+audio into mp4)
-    try:
-        import imageio_ffmpeg
-        ffmpeg_loc = str(Path(imageio_ffmpeg.get_ffmpeg_exe()).parent)
-    except Exception:
-        ffmpeg_loc = None
+    # yt-dlp needs ffmpeg to MERGE YouTube's separate video+audio streams.
+    # Prefer a system ffmpeg on PATH (also provides ffprobe); else use imageio's
+    # binary by its FULL path (its dir has no file literally named "ffmpeg").
+    ffmpeg_loc = None
+    if not shutil.which("ffmpeg"):
+        try:
+            import imageio_ffmpeg
+            ffmpeg_loc = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            print("WARNING: no ffmpeg found; install one:  conda install -c conda-forge ffmpeg")
 
     cmd = [
         "yt-dlp",
-        "-f", f"bv*[height<={args.max_height}]+ba/b[height<={args.max_height}]",
+        # prefer merged hi-res, but fall back to a single muxed stream that already
+        # has audio, so we never end up with a video-only file
+        "-f", f"bv*[height<={args.max_height}]+ba/b[height<={args.max_height}]/b",
         "--merge-output-format", "mp4",
         "--match-filter", f"duration < {args.max_duration}",
         "-o", str(out / "%(id)s.%(ext)s"),
