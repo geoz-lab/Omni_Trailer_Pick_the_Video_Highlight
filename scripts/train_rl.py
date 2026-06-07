@@ -70,16 +70,19 @@ def build_thinker(model_cfg: dict, trainable_lora: dict | None, resume: str | No
         thinker.model.print_trainable_parameters()
 
     # gradient checkpointing: recompute activations during backward -> big training
-    # memory cut (needed for 90s video + audio on one GPU). enable_input_require_grads
-    # lets grads flow through the frozen base to the LoRA params.
-    m = thinker.model
+    # memory cut (needed for 90s video + audio on one GPU). Must target the THINKER
+    # submodule (the top-level Qwen2.5-Omni model is composite and doesn't support it).
+    thk = thinker._thinker()
     try:
-        m.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-        if hasattr(m, "enable_input_require_grads"):
-            m.enable_input_require_grads()
-        print("[train] gradient checkpointing enabled")
+        try:
+            thk.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+        except TypeError:
+            thk.gradient_checkpointing_enable()
+        if hasattr(thk, "enable_input_require_grads"):
+            thk.enable_input_require_grads()      # let grads reach LoRA through frozen base
+        print(f"[train] gradient checkpointing enabled on {type(thk).__name__}")
     except Exception as exc:  # noqa: BLE001
-        print(f"[train] gradient checkpointing not enabled: {exc}")
+        print(f"[train] gradient checkpointing NOT enabled: {type(exc).__name__}: {exc}")
     return thinker
 
 
