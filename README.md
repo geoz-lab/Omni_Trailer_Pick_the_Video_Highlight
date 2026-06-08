@@ -1,15 +1,14 @@
 # Omni Trailer: Pick the Video Highlight
 
-> Omni Model + RL for Automatic Video Highlight Generation
+> Omni-modal Model + RL for Automatic Video Highlight Generation
 
 Omni Trailer is a multimodal reinforcement learning project for automatic highlight and trailer generation.
 
-Given a video with **visual frames**, **voice/audio**, and **captions/ASR text**, the model learns to select the most engaging segment. Instead of relying on
-human-labeled ground-truth highlights, the system uses a **reward model** to judge generated candidate clips and trains the trailer selector through **reinforcement learning**.
+Given a video with **visual frames**, **voice/audio**, and **captions/ASR text**, the model learns to select the most engaging segment. Instead of relying on human-labeled ground-truth highlights, the system uses a **reward model** to judge generated candidate clips and trains the trailer selector through **reinforcement learning**.
 
-The reward model evaluates whether a candidate clip is emotionally engaging, semantically important, visually clear, coherent as a short trailer, and aligned with the full video context.
+> The reward model evaluates whether a candidate clip is emotionally engaging, semantically important, visually clear, coherent as a short trailer, and aligned with the full video context (we define the reward model below).
 
-The workflow shows as below,
+The workflow is shown as below,
 
 ![Workflow](Omni_Trailer_workflow.png)
 
@@ -22,10 +21,9 @@ Here we use a Ronaldo goal video as a demo to showcase the results. The model wa
 | :---: | :---: |
 | <img src="demo_video/Ronaldo_goal_demo.gif" width="360" alt="input clip"/> | <img src="output/Ronaldo_goal_demo_highlight.gif" width="360" alt="picked highlight"/> |
 
-> Real output from `scripts/run_inference.py` on the bundled
-> `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (with Qwen2.5-Omni-7B as the base model). From the
-> 33 s clip the model selected **2.0 s → 7.0 s** — an attacking move into a shot
-> on goal with the keeper diving — and exported it as the trailer on the right.
+> Real output from `scripts/run_inference.py` on the bundled `demo_video/Ronaldo_goal_demo.mp4`, run on one H100 (with Qwen2.5-Omni-7B as the base model). 
+
+> From the 33 s clip the model selected **2.0 s → 7.0 s** — an attacking move into a shot on goal with the keeper diving — and exported it as the trailer on the right.
 
 ```bash
 python scripts/run_inference.py            # uses the Ronaldo demo by default
@@ -34,10 +32,9 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 
 ### Reward-model scores (Gemini 2.5 Pro judge)
 
-The judge (Gemini 2.5 Pro) scores each candidate clip on six axes (0–1); the
-**reward** is a weighted sum **minus a length penalty** that pulls toward a short
-trailer. Weights favor *punchiness* over *coverage*, so a tight highlight beats the
-long, unedited clip rather than losing to it (see `configs/reward.yaml`).
+The judge (Gemini 2.5 Pro) scores each candidate clip on six axes (0–1) as we prompted; the **reward** is a weighted sum **minus a length penalty** that pulls toward a short trailer. 
+
+Weights favor *punchiness* over *coverage*, so a tight highlight beats the long, unedited clip rather than losing to it (see `configs/reward.yaml`).
 
 ![Reward model evaluation](Omni_Trailer_Reward.png)
 
@@ -50,13 +47,10 @@ long, unedited clip rather than losing to it (see `configs/reward.yaml`).
 | `story_completeness` | 0.10 | the moment lands as a clear beat |
 | `relevance_to_video` | 0.08 | captures *the defining moment* (not "covers everything") |
 
-```
-reward = Σ(weightᵢ · scoreᵢ)  −  0.20 · |duration − 15s| / 15s
-```
 
-The length term strongly favors a ~15 s cut, so long clips are heavily penalized
-(the full 90 s video loses ~1.0 here, going negative). This is deliberate: it stops
-the policy from reward-hacking by just emitting the longest allowed clip.
+$$\text{reward} = \sum_i (\text{weight}_i \cdot \text{score}_i)  −  0.2 \cdot \frac{| \text{duration} − \text{15s} |} {\text{15s}} $$
+
+The length term strongly favors a ~15 s cut, so long clips are heavily penalized (the full 90 s video loses ~1.0 here, going negative). This is a deliberate design to stop the policy from reward-hacking by just emitting the longest allowed clip.
 
 **Demo score — Canada vs Ireland soccer friendly (90 s source)**
 
@@ -66,7 +60,9 @@ the policy from reward-hacking by just emitting the longest allowed clip.
 | Picked highlight — pre-GRPO (0–10 s) | 0.20 | 0.10 | 0.20 | 0.10 | 0.40 | 0.10 | **0.104** |
 | Picked highlight — post-GRPO (15 s) | 0.40 | 0.10 | 0.70 | 0.50 | 0.70 | 0.30 | **0.389** |
 
-> With a 15 s target, the **full 90 s video goes negative** (**−0.261**) — far too long to be a trailer (length penalty ≈ 1.0). The **pre-GRPO** pick is short but weak content (**0.104**); it only "wins" here on length, not quality. After **300 steps of GRPO** the policy picks an **exactly 15 s** cut (zero length penalty) with real content — story, audiovisual alignment and relevance all jump — landing at **0.389**, nearly **4× the pre-GRPO reward** and well clear of the original. The policy learned both *what* to cut and *how long* to make it.
+> With a 15 s target, the **full 90 s video goes negative** (**−0.261**) — far too long to be a trailer (length penalty ≈ 1.0). 
+> The **pre-GRPO** pick is short but weak content (**0.104**); it only "wins" here on length, not quality. 
+> After **300 steps of GRPO** the policy picks an **exactly 15 s** cut (zero length penalty) with real content — story, audiovisual alignment and relevance all jump — landing at **0.389**, nearly **4× the pre-GRPO reward** and well clear of the original. The policy learned both *what* to cut and *how long* to make it.
 
 | Original (full 90 s) | Picked highlight — pre-GRPO (10 s) | Picked highlight — post-GRPO (15 s) |
 | :---: | :---: | :---: |
@@ -76,9 +72,7 @@ the policy from reward-hacking by just emitting the longest allowed clip.
 
 ## Results — GRPO on the held-out test set
 
-Average **Gemini 2.5 Pro reward** over the held-out test split (clips the policy
-never trained on). Each row picks one highlight per test video, scores it, and
-averages — so it measures generalization, not memorization.
+Average **Gemini 2.5 Pro reward** over the held-out test split (clips the policy never trained on). Each row picks one highlight per test video, scores it, and averages — so it measures generalization, not memorization.
 
 | Policy | Test mean reward ↑ | Malformed rate ↓ | Mean clip (s) |
 | --- | :---: | :---: | :---: |
@@ -88,15 +82,15 @@ averages — so it measures generalization, not memorization.
 | + GRPO 200 steps | 0.349 | 0.000 | 14.8 |
 | + GRPO 300 steps | 0.358 | 0.000 | 15.0 |
 
-GRPO **lifts the held-out reward ~85 %** (0.193 → 0.358) and drives the malformed
-rate to **zero**. The figure below tracks every metric across training:
+GRPO **lifts the held-out reward ~85 %** (0.193 → 0.358) and drives the malformed rate to **zero**. The figure below tracks every metric across training:
 
 ![GRPO test-set evaluation curves](Omni_Trailer_Results.png)
 
-**What actually moved the reward.** The gain is *not* the model finding flashier moments — the six quality axes are essentially flat (they even dip slightly). The reward rises because the policy learns the two things the reward function actually prizes: **valid format** (malformed 4.8 % → 0 %) and **length** (mean clip 5 s → 15 s, exactly the target, so the length penalty vanishes). This is GRPO optimizing *precisely* what the reward defines — a good sanity check that the reward shaping, not luck, is steering the policy.
+**What actually moved the reward.** The gain is *not* the model finding flashier moments — the six quality axes are essentially flat (they even dip slightly). 
 
-**A sharp phase transition at ~100 steps.** Through 50 steps the policy still emits short ~5 s clips and the reward barely moves (0.193 → 0.225). Between 50 and 100 steps it "discovers" the 15 s target — clip length jumps to 14.3 s, malformed drops to 0, and reward leaps to 0.363. After that it's **converged**: 100 / 200 / 300 all
-sit at ~0.35–0.36, so 100 steps already captures essentially all the gain (300 just nails the length to a clean 15.0 s). Reward measures generalization here — every clip is from the held-out split the policy never trained on.
+The reward rises because the policy learns the two things the reward function actually prizes: **valid format** (malformed 4.8 % → 0 %) and **length** (mean clip 5 s → 15 s, exactly the target, so the length penalty vanishes). This is GRPO optimizing *precisely* what the reward defines — a good sanity check that the reward shaping, not luck, is steering the policy.
+
+**A sharp phase transition at ~100 steps.** Through 50 steps the policy still emits short ~5 s clips and the reward barely moves (0.193 → 0.225). Between 50 and 100 steps it "discovers" the 15 s target — clip length jumps to 14.3 s, malformed drops to 0, and reward leaps to 0.363. After that it's **converged**: 100 / 200 / 300 all sit at ~0.35–0.36, so 100 steps already captures essentially all the gain (300 just nails the length to a clean 15.0 s). Reward measures generalization here — every clip is from the held-out split the policy never trained on.
 
 > Per-row `n` (58–65 of 65 test clips) varies because a few clips were dropped on transient judge errors; `mean_reward` counts a malformed pick as the −1.0 penalty, so it folds highlight quality *and* format reliability into one number.
 
@@ -118,9 +112,7 @@ python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter
 python scripts/plot_eval_curves.py --input eval_results.jsonl --output Omni_Trailer_Results.png
 ```
 
-> Tip: add `--limit 30` to evaluate a subset first (faster, fewer API calls).
-> `mean_reward` counts a malformed pick as the −1.0 penalty, so it captures both
-> highlight quality and format reliability in one number.
+> Tip: add `--limit 30` to evaluate a subset first (faster, fewer API calls). `mean_reward` counts a malformed pick (sometimes the model output is not well formed according to request) as the −1.0 penalty, so it captures both highlight quality and format reliability in one number.
 
 ---
 
@@ -284,16 +276,14 @@ Notes:
 - The code handles two cluster-specific quirks automatically: it loads Qwen2.5-Omni text-only and neutralizes the `torch.load` guard for the trusted speaker file (see the note below), since torch ≥ 2.6 isn't installable on GLIBC 2.17.
 - See [`docs/sherlock.md`](docs/sherlock.md) for Slurm jobs, the demo-video copy, and the reward-API egress caveat.
 
-The reward judge calls an external VLM API. Put your key in a `.env` file
-(gitignored; auto-loaded by the scripts) — or just `export` it:
+The reward judge calls an external VLM API. Put your key in a `.env` file (gitignored; auto-loaded by the scripts) — or just `export` it:
 
 ```bash
 cp .env.example .env        # then edit .env and set GEMINI_API_KEY=...
 # equivalently: export GEMINI_API_KEY=...
 ```
 
-Default judge is Gemini 2.5 Flash (native video+audio). To use OpenAI instead,
-set `judge.provider: openai` in `configs/reward.yaml` and provide `OPENAI_API_KEY`.
+Default judge is Gemini 2.5 Flash (native video+audio). To use OpenAI instead, set `judge.provider: openai` in `configs/reward.yaml` and provide `OPENAI_API_KEY`.
 
 ## Quick start
 
@@ -313,11 +303,9 @@ python scripts/evaluate_reward.py --clips output
 
 ## Preparing training data
 
-GRPO trains on your own videos — no highlight labels needed (the reward model
-scores the clips). You just need a folder of short `.mp4` files and a manifest.
+GRPO trains on your own videos — no highlight labels needed (the reward model scores the clips). You just need a folder of short `.mp4` files and a manifest.
 
-**Quickest path — `scripts/collect_videos.py`** downloads short clips, trims them,
-and appends the manifest for you:
+**Quickest path — `scripts/collect_videos.py`** downloads short clips, trims them, and appends the manifest for you:
 
 ```bash
 # zero-config: a few CC sample clips (good for a smoke test)
@@ -327,27 +315,20 @@ python scripts/collect_videos.py --source samples --limit 4 --max-seconds 30
 python scripts/collect_videos.py --source pexels --query "soccer goal" --limit 20 --max-seconds 45
 ```
 
-Both write into `data/raw_videos/` and append `data/metadata/train.jsonl`. Or do
-it by hand:
+Both write into `data/raw_videos/` and append `data/metadata/train.jsonl`. Or do it by hand:
 
 **Where to put the videos**
 
-- Locally: drop them in [`data/raw_videos/`](data/raw_videos) (gitignored, so they
-  won't be committed).
-- On a cluster: keep large files on `$SCRATCH` and point the manifest at absolute
-  paths (e.g. `$SCRATCH/omni_trailer_data/clip01.mp4`).
+- Locally: drop them in [`data/raw_videos/`](data/raw_videos) (gitignore this, so they won't be committed).
+- On a cluster: keep large files on `$SCRATCH` and point the manifest at absolute paths (e.g. `$SCRATCH/omni_trailer_data/clip01.mp4`).
 
-**Keep clips short.** Vision attention is O(tokens²), so cost scales with
-`length × resolution`. Aim for **~15 s–2 min** per clip; `configs/model.yaml`
-(`frame_rate`, `video_max_pixels`) further caps tokens. Trim a long file with the
-bundled ffmpeg, e.g. a 30 s cut starting at 1:05:
+**Keep clips short.** Vision attention is O(tokens²), so cost scales with `length × resolution`. Aim for **~15 s–2 min** per clip; `configs/model.yaml` (`frame_rate`, `video_max_pixels`) further caps tokens. Trim a long file with the bundled ffmpeg, e.g. a 30 s cut starting at 1:05:
 
 ```bash
 ffmpeg -ss 00:01:05 -i long.mp4 -t 30 -c:v libx264 -c:a aac data/raw_videos/clip01.mp4
 ```
 
-**Build the manifest** `data/metadata/train.jsonl` — one JSON object per line
-(`summary` gives the judge full-video context for the relevance axis):
+**Build the manifest** `data/metadata/train.jsonl` — one JSON object per line (`summary` gives the judge full-video context for the relevance axis):
 
 ```json
 {"video": "data/raw_videos/clip01.mp4", "summary": "Champions League final, last-minute winner"}
@@ -370,6 +351,40 @@ Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` download
 
 > ⚠️ **Licensing:** real broadcast sports highlights (e.g. actual match footage) are usually **copyrighted** — fine to experiment with on your own machine, but don't commit or redistribute them. For shareable demos, prefer the CC/stock sources above or footage you own. Tools like `yt-dlp` can fetch clips, but only use them on content you have the right to.
 
+### What this project uses — SoccerNet (UEFA Champions League)
+
+The stock sites above are great for quick demos, but most of their clips are
+**silent** — and our reward judge leans on crowd roar and commentary
+(`audiovisual_alignment`). So the actual training data comes from
+**[SoccerNet](https://www.soccer-net.org/)**, a large-scale research dataset of
+**full, broadcast-quality soccer matches with their original audio**. We pull the
+**UEFA Champions League** subset: complete game videos that we segment into short
+clips, each carrying real visuals *and* the live commentary/crowd track — exactly
+the multimodal signal the omni policy and the judge need.
+
+- **Source:** SoccerNet full-match videos (UEFA Champions League games), accessed
+  under SoccerNet's research **NDA** (password in `$SOCCERNET_PASSWORD` / `.env` —
+  never committed). Footage is **copyrighted**: used locally for research only, not
+  redistributed.
+- **Processing:** each match is stream-segmented into **~45 s clips with audio**,
+  filtered to keep only segments that actually have a soundtrack
+  (`build_manifest.py --segment --require-audio`), yielding **648 clips →
+  583 train / 65 test** (held-out for the Results table above).
+- **Why CL specifically:** high production value, dense with goal/celebration
+  moments and loud crowd dynamics — strong, varied highlight candidates for GRPO.
+
+```bash
+# browse / download the Champions League subset (needs SOCCERNET_PASSWORD)
+python scripts/download_soccernet.py --list --filter "champions-league"
+python scripts/download_soccernet.py --filter "champions-league"
+# segment full matches into 45s clips that have audio, then split train/test
+python scripts/build_manifest.py --segment 45 --require-audio --sample-per-video 8
+python scripts/split_manifest.py --test-frac 0.1
+```
+
+> See [`docs/datasets.md`](docs/datasets.md) for the full ingestion recipe and the
+> other sources we scaffolded (Mr.HiSum, YouTube Highlights / TVSum).
+
 ## Configuration
 
 | File                    | Purpose                                              |
@@ -386,8 +401,7 @@ Royalty-free / Creative-Commons stock sites — all offer direct `.mp4` download
 - [`docs/datasets.md`](docs/datasets.md) — data sources (SoccerNet, Mr.HiSum, TVSum, …) + ingestion
 - [`docs/sherlock.md`](docs/sherlock.md) — running on Stanford's Sherlock cluster (Slurm)
 
-Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch),
-[`slurm/train.sbatch`](slurm/train.sbatch).
+Ready-to-use Slurm jobs: [`slurm/inference.sbatch`](slurm/inference.sbatch), [`slurm/train.sbatch`](slurm/train.sbatch).
 
 ## Cluster note: torch < 2.6 + the speaker file
 
