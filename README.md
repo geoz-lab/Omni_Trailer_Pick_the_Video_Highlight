@@ -1,6 +1,6 @@
 # Omni Trailer: Pick the Video Highlight
 
-> Omni-modal Model + RL for Automatic Video Highlight Generation
+>✨ Omni-modal Model + RL for Automatic Video Highlight Generation
 
 Omni Trailer is a multimodal reinforcement learning project for automatic highlight and trailer generation.
 
@@ -14,7 +14,7 @@ The workflow is shown as below,
 
 ---
 
-## Demo
+## 🎨 Demo
 Here we use a Ronaldo goal video as a demo to showcase the results. The model watches a full clip and cuts the single most trailer-worthy moment.
 
 | Input video (33 s full clip) | Picked highlight (5 s trailer) |
@@ -30,7 +30,7 @@ python scripts/run_inference.py            # uses the Ronaldo demo by default
 # -> output/Ronaldo_goal_demo_highlight.mp4 + .gif
 ```
 
-### Reward-model scores (Gemini 2.5 Pro judge)
+### ⚙️ Reward-model scores (Gemini 2.5 Pro judge)
 
 The judge (Gemini 2.5 Pro) scores each candidate clip on six axes (0–1) as we prompted; the **reward** is a weighted sum **minus a length penalty** that pulls toward a short trailer. 
 
@@ -70,7 +70,7 @@ The length term strongly favors a ~15 s cut, so long clips are heavily penalized
 
 ---
 
-## Results — GRPO on the held-out test set
+## 🧪 Results — GRPO on the held-out test set
 
 Average **Gemini 2.5 Pro reward** over the held-out test split (clips the policy never trained on). Each row picks one highlight per test video, scores it, and averages — so it measures generalization, not memorization.
 
@@ -116,11 +116,11 @@ python scripts/plot_eval_curves.py --input eval_results.jsonl --output Omni_Trai
 
 ---
 
-## Goal
+## 🚀 Goal
 
 We want automatically pick the most touching, exciting, or representative highlight section from a video, using audio, visual frames, and captions **together**.
 
-## Related Work and Motivation
+## 📖 Related Work and Motivation
 
 Automatic trailer generation is closely related to video summarization, highlight detection, and reinforcement-learning-based video editing. Early video summarization methods focused on selecting representative and diverse video segments, while more recent approaches leverage deep learning and reinforcement learning to automatically identify important moments in long videos.
 
@@ -132,7 +132,7 @@ Despite these advances, most existing approaches rely on supervised movie–trai
 
 By combining multimodal reasoning capabilities of Omni models with reward-driven optimization, Omni Trailer aims to bridge the gap between traditional video summarization and fully automated trailer generation, enabling scalable highlight discovery for movies, sports broadcasts, and short-form online videos without requiring manually labeled highlight timestamps.
 
-## RL Training Pipeline
+## 🛠️ RL Training Pipeline
 
 ```
 [Video Input]
@@ -213,7 +213,7 @@ Omni_Trailer_Pick_the_Video_Highlight/
 
 ---
 
-## Installation
+## 📦 Installation
 
 Inference and RL training run the Qwen2.5-Omni backbone and need a GPU (A100/H100 recommended).
 
@@ -301,7 +301,7 @@ python scripts/train_rl.py --config configs/train_rl.yaml
 python scripts/evaluate_reward.py --clips output
 ```
 
-## Preparing training data
+## ℹ️ Preparing training data
 
 GRPO trains on your own videos — no highlight labels needed (the reward model scores the clips). You just need a folder of short `.mp4` files and a manifest.
 
@@ -412,6 +412,27 @@ This is a deliberate, scoped exception for a trusted file — don't generalize i
 ## Status
 
 The omni inference path (`run_inference.py`), the GRPO training loop (`train_rl.py`), the Gemini/OpenAI reward judge, and all video/audio I/O are implemented and meant to run on the GPU cluster. They have **not** been executed on CPU here. Pin exact `transformers` / SDK versions and the Qwen2.5-Omni model id for your environment before a full run. The proposal-stage encoders (`src/encoders/`) remain optional stubs (the omni model ingests the full clip directly).
+
+## 🎯 Next Step
+
+We built a demo project, but we definitely scraped by on time and budget. There are a ton of directions to take this next. Here is the breakdown of what we want to tackle:
+
+1. Upgrading the Core Brain:
+Omni-Modal Thinker: Right now, we’re running on Qwen2.5-Omni. The immediate next step is swapping this out for a stronger, state-of-the-art omni-modal model to act as our primary "thinker" and level up the reasoning.
+
+2. Smarter Trailer Generation (Multi-Clip Stitching):
+Right now, the trailer generation is pretty basic—it just grabs a single highlight moment from the raw video. We want to select multiple key moments and stitch them together into a cohesive, high-quality trailer. But the challenge is this requires deeper content understanding. Jarring cuts or bad transitions will mislead or annoy the audience, so we’ll need a robust justifier/validator system to evaluate how well the stitched scenes actually flow together.
+
+3. Dataset, Training Strategy & Cost Optimization:
+Since this started as a demo project, our dataset prep was rushed and our hyperparameters aren't fully optimized. Evaluating our Reward Models: Is the current prompt we're using for the Gemini reward model actually good enough? Running these evaluations costs a decent amount of cash in API calls. We need to explore replacing Gemini with a strong, locally hosted omni-modal model to act as our reward model and keep costs down.
+
+4. Architectural Tweaks & Perf Optimization:
+Can we modify the underlying structure to squeeze out better performance? We need to look closely at improving both our evaluation scores and inference latency to make the model snappier.
+
+5. Scaling Beyond Video Editing:
+Right now, the model understands multimodal data well enough to pick out highlight clips. But why stop there? We want to see if this exact decision-making framework can scale to:
+
+... way too many fun directions to explore, but this is a list in my mind for now.
 
 ## License
 
