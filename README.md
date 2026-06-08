@@ -64,18 +64,13 @@ the policy from reward-hacking by just emitting the longest allowed clip.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Original full video (90 s) | 0.85 | 0.60 | 1.00 | 1.00 | 0.95 | 0.45 | **−0.261** |
 | Picked highlight — pre-GRPO (0–10 s) | 0.20 | 0.10 | 0.20 | 0.10 | 0.40 | 0.10 | **0.104** |
-| Picked highlight — post-GRPO (~15 s) | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Picked highlight — post-GRPO (15 s) | 0.40 | 0.10 | 0.70 | 0.50 | 0.70 | 0.30 | **0.389** |
 
-> With a 15 s target, the **full 90 s video goes negative** (**−0.261**) — far too
-> long to be a trailer (length penalty ≈ 1.0). The **pre-GRPO** pick is short but
-> weak content (**0.104**); it only "wins" here on length, not quality. So the
-> meaningful target is the **post-GRPO** row: GRPO should produce a tight ~15 s
-> goal-and-celebration cut with high excitement/trailer scores, landing well above
-> 0.1. (Filled after training.)
+> With a 15 s target, the **full 90 s video goes negative** (**−0.261**) — far too long to be a trailer (length penalty ≈ 1.0). The **pre-GRPO** pick is short but weak content (**0.104**); it only "wins" here on length, not quality. After **300 steps of GRPO** the policy picks an **exactly 15 s** cut (zero length penalty) with real content — story, audiovisual alignment and relevance all jump — landing at **0.389**, nearly **4× the pre-GRPO reward** and well clear of the original. The policy learned both *what* to cut and *how long* to make it.
 
-| Original (full 90 s) | Picked highlight — pre-GRPO (10 s) |
-| :---: | :---: |
-| <img src="demo_video/canada_demo_90s.gif" width="360" alt="canada original"/> | <img src="output/canada_demo_90s_highlight.gif" width="360" alt="canada pre-GRPO trailer"/> |
+| Original (full 90 s) | Picked highlight — pre-GRPO (10 s) | Picked highlight — post-GRPO (15 s) |
+| :---: | :---: | :---: |
+| <img src="demo_video/canada_demo_90s.gif" width="300" alt="canada original"/> | <img src="output/canada_demo_90s_highlight.gif" width="300" alt="canada pre-GRPO trailer"/> | <img src="output/canada_demo_90s_grpo300_highlight.gif" width="300" alt="canada post-GRPO trailer"/> |
 
 ---
 
@@ -87,23 +82,40 @@ averages — so it measures generalization, not memorization.
 
 | Policy | Test mean reward ↑ | Malformed rate ↓ | Mean clip (s) |
 | --- | :---: | :---: | :---: |
-| Base Qwen2.5-Omni (no GRPO) | _TBD_ | _TBD_ | _TBD_ |
-| + GRPO 150 steps | _TBD_ | _TBD_ | _TBD_ |
-| + GRPO 300 steps | _TBD_ | _TBD_ | _TBD_ |
+| Base Qwen2.5-Omni (no GRPO) | 0.193 | 0.048 | 5.0 |
+| + GRPO 50 steps | 0.225 | 0.052 | 5.3 |
+| + GRPO 100 steps | **0.363** | 0.000 | 14.3 |
+| + GRPO 200 steps | 0.349 | 0.000 | 14.8 |
+| + GRPO 300 steps | 0.358 | 0.000 | 15.0 |
+
+GRPO **lifts the held-out reward ~85 %** (0.193 → 0.358) and drives the malformed
+rate to **zero**. The figure below tracks every metric across training:
+
+![GRPO test-set evaluation curves](Omni_Trailer_Results.png)
+
+**What actually moved the reward.** The gain is *not* the model finding flashier moments — the six quality axes are essentially flat (they even dip slightly). The reward rises because the policy learns the two things the reward function actually prizes: **valid format** (malformed 4.8 % → 0 %) and **length** (mean clip 5 s → 15 s, exactly the target, so the length penalty vanishes). This is GRPO optimizing *precisely* what the reward defines — a good sanity check that the reward shaping, not luck, is steering the policy.
+
+**A sharp phase transition at ~100 steps.** Through 50 steps the policy still emits short ~5 s clips and the reward barely moves (0.193 → 0.225). Between 50 and 100 steps it "discovers" the 15 s target — clip length jumps to 14.3 s, malformed drops to 0, and reward leaps to 0.363. After that it's **converged**: 100 / 200 / 300 all
+sit at ~0.35–0.36, so 100 steps already captures essentially all the gain (300 just nails the length to a clean 15.0 s). Reward measures generalization here — every clip is from the held-out split the policy never trained on.
+
+> Per-row `n` (58–65 of 65 test clips) varies because a few clips were dropped on transient judge errors; `mean_reward` counts a malformed pick as the −1.0 penalty, so it folds highlight quality *and* format reliability into one number.
 
 Reproduce (each line evaluates the test set and appends `eval_results.jsonl`):
 
 ```bash
-# 0. baseline: original model, no adapter
+# train once for 300 steps (DDP), saving a checkpoint periodically
+sbatch slurm/train_ddp.sbatch          # -> checkpoints/adapter_{50,100,200}, adapter_final
+
+# baseline: original model, no adapter
 python scripts/evaluate_testset.py --eval-model --tag base
-# 1. train 150 steps, keep that adapter, evaluate
-sbatch --export=ALL,MAX_STEPS=150 slurm/train.sbatch       # -> checkpoints/adapter_final
-cp -r checkpoints/adapter_final checkpoints/adapter_150
-python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_150 --tag grpo150
-# 2. continue +150 (resume) -> 300 total, evaluate
-sbatch --export=ALL,MAX_STEPS=150,RESUME=checkpoints/adapter_150 slurm/train.sbatch
-cp -r checkpoints/adapter_final checkpoints/adapter_300
-python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_300 --tag grpo300
+# each saved checkpoint
+for s in 50 100 200; do
+  python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_$s --tag grpo$s
+done
+python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter_final --tag grpo300
+
+# redraw the curves from the appended summaries
+python scripts/plot_eval_curves.py --input eval_results.jsonl --output Omni_Trailer_Results.png
 ```
 
 > Tip: add `--limit 30` to evaluate a subset first (faster, fewer API calls).
@@ -115,6 +127,18 @@ python scripts/evaluate_testset.py --eval-model --checkpoint checkpoints/adapter
 ## Goal
 
 We want automatically pick the most touching, exciting, or representative highlight section from a video, using audio, visual frames, and captions **together**.
+
+## Related Work and Motivation
+
+Automatic trailer generation is closely related to video summarization, highlight detection, and reinforcement-learning-based video editing. Early video summarization methods focused on selecting representative and diverse video segments, while more recent approaches leverage deep learning and reinforcement learning to automatically identify important moments in long videos.
+
+A representative work is *Deep Reinforcement Learning for Unsupervised Video Summarization with Diversity-Representativeness Reward* (AAAI 2018), which formulates video summarization as a sequential decision-making process and trains a summarization policy using reinforcement learning without requiring frame-level annotations. The method demonstrates that reward-driven optimization can effectively learn video summarization behaviors from unlabeled videos.
+
+More recently, *Towards Automated Movie Trailer Generation* (CVPR 2024) studies the specific task of generating movie trailers from full-length films. The authors propose a Trailer Generation Transformer (TGT) that models trailer creation as a sequence-to-sequence shot generation problem and significantly improves automatic trailer generation performance through learned shot selection and composition.
+
+Despite these advances, most existing approaches rely on supervised movie–trailer pairs, handcrafted rewards, or visual-only representations. In contrast, Omni Trailer proposes a multimodal reinforcement learning framework that jointly leverages video, audio, and caption information through an Omni-model backbone (Qwen2.5-Omni). Instead of relying on ground-truth trailer annotations, the system generates candidate highlight clips and evaluates them using a large video-language reward model that scores excitement, emotional impact, trailer quality, audiovisual alignment, story completeness, relevance, and duration preference. The highlight-selection policy is then optimized through GRPO/PPO-style reinforcement learning.
+
+By combining multimodal reasoning capabilities of Omni models with reward-driven optimization, Omni Trailer aims to bridge the gap between traditional video summarization and fully automated trailer generation, enabling scalable highlight discovery for movies, sports broadcasts, and short-form online videos without requiring manually labeled highlight timestamps.
 
 ## RL Training Pipeline
 
